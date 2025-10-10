@@ -1,0 +1,54 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Nonce {
+  id        String   @id @default(cuid())
+  nonce     String   @unique
+  address   String
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([nonce])
+  @@index([address])
+}
+
+model WalletLink {
+  id                String   @id @default(cuid())
+  solanaAddress     String
+  evmAddress        String
+  tokenIds          String[] // Array of NFT token IDs
+  solanaSignature   String
+  evmSignature      String
+  verifiedAt        DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([solanaAddress, evmAddress])
+  @@index([solanaAddress])
+  @@index([evmAddress])
+}
+
+model LinkedNFT {
+  id                String   @id @default(cuid())
+  tokenId           String   @unique // Unique token ID (e.g., "564")
+  mintAddress       String   @unique // The actual NFT mint address
+  solanaAddress     String   // Wallet that owns this NFT
+  evmAddress        String   // Linked EVM wallet
+  walletLinkId      String   // Reference to the WalletLink
+  linkedAt          DateTime @default(now())
+
+  @@index([tokenId])
+  @@index([solanaAddress])
+  @@index([evmAddress])
+  @@index([walletLinkId])
+}
+

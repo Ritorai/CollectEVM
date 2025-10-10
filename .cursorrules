@@ -1,0 +1,39 @@
+# Cursor Rules for CollectEVM Project
+
+## Code Style
+- Use TypeScript for all files
+- Use functional components with hooks
+- Prefer async/await over promises
+- Use meaningful variable and function names
+- Add comments for complex logic
+
+## File Organization
+- Components in /components
+- API routes in /app/api
+- Utilities in /lib
+- Types can be co-located or in /types
+
+## Best Practices
+- Always validate input on both client and server
+- Use Prisma for all database operations
+- Verify signatures server-side, never trust client
+- Handle errors gracefully with try-catch
+- Use environment variables for sensitive data
+- Add loading states for async operations
+- Provide user feedback with toast notifications
+
+## Security
+- Never expose private keys or sensitive data
+- Verify all signatures on the backend
+- Use nonces to prevent replay attacks
+- Validate all user input
+- Use HTTPS in production
+- Sanitize database queries (Prisma does this)
+
+## Performance
+- Use connection pooling for database
+- Cache NFT queries when possible
+- Optimize RPC calls to Solana
+- Use pagination for large lists
+- Minimize bundle size
+

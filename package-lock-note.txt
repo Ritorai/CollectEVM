@@ -1,0 +1,11 @@
+IMPORTANT: After cloning this repository, run:
+
+npm install
+
+This will:
+1. Install all dependencies
+2. Generate Prisma client (via postinstall script)
+3. Create package-lock.json
+
+You can safely delete this file after running npm install.
+
