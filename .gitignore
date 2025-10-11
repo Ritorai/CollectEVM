@@ -133,3 +133,8 @@ Thumbs.db
 
 # Prisma
 /prisma/migrations
+
+# Local development tools
+ngrok.exe
+ngrok
+*.exe

@@ -28,14 +28,14 @@ export async function getWassieverseNFTs(walletAddress: string): Promise<{ mintA
     try {
       return await getWassieverseNFTsHelius(walletAddress);
     } catch (heliusError) {
-      console.warn(`⚠️ Helius API failed: ${heliusError.message}`);
+      console.warn(`⚠️ Helius API failed: ${heliusError instanceof Error ? heliusError.message : 'Unknown error'}`);
       console.log(`🔄 Falling back to Solana RPC method...`);
       return await getWassieverseNFTsRPC(walletAddress);
     }
     
   } catch (error) {
     console.error("❌ Error fetching Wassieverse NFTs:", error);
-    throw new Error(`Failed to fetch NFTs: ${error.message}`);
+    throw new Error(`Failed to fetch NFTs: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -71,7 +71,7 @@ async function getWassieverseNFTsHelius(walletAddress: string): Promise<{ mintAd
   const nfts = await response.json();
   console.log(`📊 Found ${nfts.length} total NFTs via Helius`);
 
-  const wassieverseNFTs: string[] = [];
+  const wassieverseNFTs: { mintAddress: string; tokenId: string }[] = [];
 
   for (const nft of nfts) {
     console.log(`🔍 Checking NFT: ${nft.mint}`);
@@ -167,7 +167,7 @@ async function getWassieverseNFTsRPC(walletAddress: string): Promise<{ mintAddre
             console.log(`❌ No metadata found for NFT: ${mintAddress}`);
           }
         } catch (metadataError) {
-          console.warn(`⚠️ Error checking metadata for ${mintAddress}:`, metadataError.message);
+          console.warn(`⚠️ Error checking metadata for ${mintAddress}:`, metadataError instanceof Error ? metadataError.message : 'Unknown error');
         }
       }
     }
@@ -177,7 +177,7 @@ async function getWassieverseNFTsRPC(walletAddress: string): Promise<{ mintAddre
     
   } catch (error) {
     console.error("❌ RPC method failed:", error);
-    throw new Error(`RPC method failed: ${error.message}`);
+    throw new Error(`RPC method failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 

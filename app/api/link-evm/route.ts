@@ -156,27 +156,34 @@ export async function POST(req: NextRequest) {
     // 6. Handle LinkedNFT entries
     let linkedNFTs;
     if (existingWalletLink) {
-      // Update existing wallet link - remove old LinkedNFT entries and create new ones
-      await prisma.linkedNFT.deleteMany({
-        where: {
-          walletLinkId: existingWalletLink.id,
-        },
-      });
+      // Update existing wallet link - add new NFTs to existing ones
+      const existingTokenIds = await prisma.linkedNFT.findMany({
+        where: { walletLinkId: existingWalletLink.id },
+        select: { tokenId: true }
+      }).then(nfts => nfts.map(nft => nft.tokenId));
+
+      // Only create entries for new token IDs
+      const newNFTs = nfts.filter(nft => !existingTokenIds.includes(nft.tokenId));
       
-      linkedNFTs = await Promise.all(
-        nfts.map(nft => 
-          prisma.linkedNFT.create({
-            data: {
-              tokenId: nft.tokenId,
-              mintAddress: nft.mintAddress,
-              solanaAddress,
-              evmAddress: evmAddress.toLowerCase(),
-              walletLinkId: walletLink.id,
-            }
-          })
-        )
-      );
-      console.log(`✅ Updated LinkedNFT entries:`, linkedNFTs.map(nft => `Token ID ${nft.tokenId}`));
+      if (newNFTs.length > 0) {
+        linkedNFTs = await Promise.all(
+          newNFTs.map(nft => 
+            prisma.linkedNFT.create({
+              data: {
+                tokenId: nft.tokenId,
+                mintAddress: nft.mintAddress,
+                solanaAddress,
+                evmAddress: evmAddress.toLowerCase(),
+                walletLinkId: walletLink.id,
+              }
+            })
+          )
+        );
+        console.log(`✅ Added ${linkedNFTs.length} new LinkedNFT entries:`, linkedNFTs.map(nft => `Token ID ${nft.tokenId}`));
+      } else {
+        console.log(`✅ No new NFTs to add - all already linked`);
+        linkedNFTs = [];
+      }
     } else {
       // Create new wallet link
       linkedNFTs = await Promise.all(

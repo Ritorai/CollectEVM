@@ -4,6 +4,7 @@ import { useState } from "react";
 import { SolanaWalletConnector } from "@/components/SolanaWalletConnector";
 import { EVMWalletConnector } from "@/components/EVMWalletConnector";
 import { NFTDisplay } from "@/components/NFTDisplay";
+import { NFTSelection } from "@/components/NFTSelection";
 
 export default function Home() {
   const [solanaData, setSolanaData] = useState<{
@@ -12,12 +13,80 @@ export default function Home() {
     signature: string;
   } | null>(null);
 
+  const [evmAddress, setEvmAddress] = useState<string | null>(null);
+  const [selectedTokenIds, setSelectedTokenIds] = useState<string[]>([]);
+  const [isLinking, setIsLinking] = useState(false);
+
   const [linkedData, setLinkedData] = useState<{
     solanaAddress: string;
     evmAddress: string;
     tokenIds: string[];
     verifiedAt: string;
   } | null>(null);
+
+  const handleLinkNFTs = async (_tokenIds: string[]) => {
+    if (!solanaData || !evmAddress) return;
+
+    setIsLinking(true);
+    try {
+      // Generate nonce
+      const nonceResponse = await fetch('/api/nonce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: solanaData.solAddress }),
+      });
+
+      if (!nonceResponse.ok) throw new Error('Failed to get nonce');
+      const { nonce } = await nonceResponse.json();
+
+      // Request Solana signature (you'll need to implement this)
+      // For now, we'll use the existing signature
+      const solanaSignature = solanaData.signature;
+
+      // Create message for EVM signature
+      const evmMessage = `Link Solana wallet ${solanaData.solAddress} to EVM wallet ${evmAddress}. Nonce: ${nonce}`;
+      
+      // Request EVM signature (you'll need to implement this)
+      // For now, we'll use a placeholder
+      const evmSignature = "placeholder_signature";
+
+      // Link the wallets
+      const linkResponse = await fetch('/api/link-evm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          solanaAddress: solanaData.solAddress,
+          evmAddress,
+          evmSignature,
+          message: evmMessage,
+          nonce,
+          solanaSignature,
+        }),
+      });
+
+      if (!linkResponse.ok) {
+        const errorData = await linkResponse.json();
+        throw new Error(errorData.error || 'Failed to link wallets');
+      }
+
+      const linkData = await linkResponse.json();
+      setLinkedData({
+        solanaAddress: solanaData.solAddress,
+        evmAddress,
+        tokenIds: linkData.data.tokenIds,
+        verifiedAt: new Date().toISOString(),
+      });
+
+      // Clear selection
+      setSelectedTokenIds([]);
+      
+    } catch (error) {
+      console.error('Linking failed:', error);
+      alert(`Linking failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLinking(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -37,10 +106,25 @@ export default function Home() {
           {/* Main Content */}
           <div className="grid gap-6">
             <SolanaWalletConnector onVerified={setSolanaData} />
+            
+            {solanaData && (
+              <NFTSelection
+                solanaAddress={solanaData.solAddress}
+                evmAddress={evmAddress}
+                onSelectionChange={setSelectedTokenIds}
+                onLinkNFTs={handleLinkNFTs}
+                isLinking={isLinking}
+              />
+            )}
+            
             <EVMWalletConnector
               solanaData={solanaData}
-              onLinked={setLinkedData}
+              onLinked={(data) => {
+                setLinkedData(data);
+                setEvmAddress(data.evmAddress);
+              }}
             />
+            
             {linkedData && <NFTDisplay linkedData={linkedData} />}
           </div>
 

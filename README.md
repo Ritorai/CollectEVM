@@ -5,9 +5,12 @@ A full-stack Next.js application that allows Wassieverse NFT holders on Solana t
 ## Features
 
 - 🔐 **Secure Wallet Connection**: Connect Phantom (Solana) and MetaMask/WalletConnect (EVM)
-- ✅ **On-Chain Verification**: Server-side verification of NFT ownership on Solana blockchain
-- 🔗 **Wallet Linking**: Cryptographically secure wallet linking with signature verification
-- 💾 **Persistent Storage**: PostgreSQL database to store wallet mappings
+- ✅ **On-Chain Verification**: Server-side verification of NFT ownership using Metaplex Collection NFT standard
+- 🖼️ **Visual NFT Display**: Shows all Wassieverse NFTs held in connected Solana wallet
+- 🎯 **Selective Linking**: Choose specific NFTs to link to your EVM wallet
+- 🔗 **Smart Wallet Linking**: New NFTs are added to existing wallet pairs instead of creating duplicates
+- 🚫 **Double-Link Prevention**: NFTs can only be linked once (prevents linking same NFT to multiple wallets)
+- 💾 **Persistent Storage**: PostgreSQL database with token ID tracking
 - 🎨 **Modern UI**: Beautiful interface built with TailwindCSS and shadcn/ui
 - 🔒 **Security**: Nonce-based signatures to prevent replay attacks
 
@@ -24,6 +27,7 @@ A full-stack Next.js application that allows Wassieverse NFT holders on Solana t
 
 ## Documentation
 
+- 🤝 **[Contributing Guide](CONTRIBUTING_GUIDE.md)** - How to collaborate on this project
 - 📚 **[Metaplex Collection Verification](docs/METAPLEX_COLLECTION_VERIFICATION.md)** - Comprehensive guide to how NFT verification works
 - 🚀 **[Quick Start Guide](QUICKSTART.md)** - Get up and running in 5 minutes
 - 📦 **[Collection Verification Update](COLLECTION_VERIFICATION_UPDATE.md)** - Latest changes to verification system
@@ -122,11 +126,21 @@ Stores verified wallet linkings:
 - `id`: Unique identifier
 - `solanaAddress`: Solana wallet address
 - `evmAddress`: EVM wallet address
-- `tokenIds`: Array of NFT mint addresses
+- `tokenIds`: Array of NFT token IDs (e.g., ["564", "1234"])
 - `solanaSignature`: Verified Solana signature
 - `evmSignature`: Verified EVM signature
 - `verifiedAt`: Verification timestamp
 - `updatedAt`: Last update timestamp
+
+### LinkedNFT Table
+Tracks individual NFTs to prevent double-linking:
+- `id`: Unique identifier
+- `tokenId`: NFT token ID (e.g., "564") - unique
+- `mintAddress`: Full Solana mint address - unique
+- `solanaAddress`: Solana wallet that owns this NFT
+- `evmAddress`: Linked EVM wallet
+- `walletLinkId`: Reference to WalletLink entry
+- `linkedAt`: Link timestamp
 
 ## API Endpoints
 
@@ -164,8 +178,30 @@ Verifies Solana wallet signature and checks for Wassieverse NFTs.
 ```json
 {
   "verified": true,
-  "tokenIds": ["nft_mint_1", "nft_mint_2"],
+  "tokenIds": ["564", "1234"],
+  "nfts": [
+    {"mintAddress": "HgiyykEXv...", "tokenId": "564"},
+    {"mintAddress": "8Kq5JL9w...", "tokenId": "1234"}
+  ],
   "message": "Found 2 Wassieverse NFT(s)"
+}
+```
+
+### GET /api/nft-status?solanaAddress={address}
+Checks linking status of NFTs for a given Solana address.
+
+**Response:**
+```json
+{
+  "success": true,
+  "linkedNFTs": [
+    {
+      "tokenId": "564",
+      "mintAddress": "HgiyykEXv...",
+      "evmAddress": "0x123...",
+      "linkedAt": "2024-01-01T00:00:00.000Z"
+    }
+  ]
 }
 ```
 
@@ -203,24 +239,27 @@ Links EVM wallet to verified Solana wallet.
 1. **Connect Solana Wallet**
    - User clicks "Connect Solana Wallet"
    - Phantom wallet prompts for connection
-   - User clicks "Verify NFT Ownership"
+   - All Wassieverse NFTs in the wallet are automatically displayed
 
-2. **Verify NFT Ownership**
-   - Frontend requests a nonce from `/api/nonce`
-   - User signs a message with their Solana wallet
-   - Backend verifies signature and checks blockchain for Wassieverse NFTs
-   - NFT token IDs are returned if verified
+2. **View NFT Status**
+   - Visual indicators show which NFTs are already linked (🔗 Linked)
+   - Unlinked NFTs are shown with checkboxes for selection (🔓 Unlinked)
+   - Already linked NFTs show which EVM address they're linked to
 
-3. **Connect EVM Wallet**
+3. **Select NFTs to Link**
+   - User checks the boxes next to unlinked NFTs they want to link
+   - Already linked NFTs cannot be selected (prevents double-linking)
+
+4. **Connect EVM Wallet**
    - User clicks "Connect EVM Wallet"
    - MetaMask or WalletConnect prompts for connection
-   - User clicks "Link Wallets"
 
-4. **Link Wallets**
-   - Frontend requests a new nonce
-   - User signs a message with their EVM wallet
-   - Backend verifies both signatures and saves the link
-   - Success message displays linked wallet information
+5. **Link Selected NFTs**
+   - User clicks "Link Selected NFTs"
+   - Frontend requests nonces and signatures
+   - Backend verifies and creates/updates wallet link
+   - If wallets were already linked, new NFTs are added to existing link
+   - Success message shows linked NFTs
 
 ## Security Features
 
@@ -306,9 +345,18 @@ This app can be deployed to:
 - Ensure PostgreSQL is running
 - Check firewall/network settings
 
+## Recent Updates
+
+- ✅ **Visual NFT Display**: Shows all Wassieverse NFTs with images and metadata
+- ✅ **Selective Linking**: Choose specific NFTs to link
+- ✅ **Double-Link Prevention**: NFTs can only be linked once
+- ✅ **Smart Updates**: New NFTs added to existing wallet pairs
+- ✅ **Token ID Storage**: Stores clean token IDs (e.g., "564") instead of full mint addresses
+- ✅ **Metaplex Collection Verification**: Uses verified Collection NFT standard
+
 ## Future Enhancements
 
-- [ ] Add NFT image display from metadata
+- [ ] Add NFT image display from on-chain metadata
 - [ ] Implement wallet unlink functionality
 - [ ] Add admin dashboard for viewing all links
 - [ ] Support multiple NFT collections
@@ -317,6 +365,8 @@ This app can be deployed to:
 - [ ] Add unit and integration tests
 - [ ] Support additional wallet types (Solflare, Ledger)
 - [ ] Add analytics and metrics
+- [ ] Add bulk NFT operations
+- [ ] Implement NFT transfer detection
 
 ## License
 
