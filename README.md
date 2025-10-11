@@ -27,9 +27,14 @@ A full-stack Next.js application that allows Wassieverse NFT holders on Solana t
 
 ## Documentation
 
-- 🤝 **[Contributing Guide](CONTRIBUTING_GUIDE.md)** - How to collaborate on this project
-- 📚 **[Metaplex Collection Verification](docs/METAPLEX_COLLECTION_VERIFICATION.md)** - Comprehensive guide to how NFT verification works
+### 🚀 Getting Started
+- ✅ **[Setup Checklist](SETUP_CHECKLIST.md)** - Step-by-step setup guide for new collaborators
 - 🚀 **[Quick Start Guide](QUICKSTART.md)** - Get up and running in 5 minutes
+- 🤝 **[Contributing Guide](CONTRIBUTING_GUIDE.md)** - How to collaborate on this project
+- 📤 **[GitHub Push Instructions](GITHUB_PUSH_INSTRUCTIONS.md)** - How to upload to GitHub and collaborate
+
+### 📚 Technical Documentation
+- 📚 **[Metaplex Collection Verification](docs/METAPLEX_COLLECTION_VERIFICATION.md)** - Comprehensive guide to how NFT verification works
 - 📦 **[Collection Verification Update](COLLECTION_VERIFICATION_UPDATE.md)** - Latest changes to verification system
 - 🏗️ **[Architecture](ARCHITECTURE.md)** - System architecture and design decisions
 - 🚀 **[Deployment Guide](DEPLOYMENT.md)** - How to deploy to production
