@@ -11,6 +11,7 @@ export default function Home() {
     solAddress: string;
     tokenIds: string[];
     signature: string;
+    nfts?: { mintAddress: string; tokenId: string }[];
   } | null>(null);
 
   const [evmAddress, setEvmAddress] = useState<string | null>(null);
@@ -111,6 +112,7 @@ export default function Home() {
               <NFTSelection
                 solanaAddress={solanaData.solAddress}
                 evmAddress={evmAddress}
+                verifiedNFTs={solanaData.nfts || []}
                 onSelectionChange={setSelectedTokenIds}
                 onLinkNFTs={handleLinkNFTs}
                 isLinking={isLinking}

@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -26,7 +26,7 @@ model WalletLink {
   id                String   @id @default(cuid())
   solanaAddress     String
   evmAddress        String
-  tokenIds          String[] // Array of NFT token IDs
+  tokenIds          String   // JSON string of NFT token IDs
   solanaSignature   String
   evmSignature      String
   verifiedAt        DateTime @default(now())

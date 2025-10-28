@@ -19,6 +19,7 @@ interface NFT {
 interface NFTSelectionProps {
   solanaAddress: string;
   evmAddress?: string | null;
+  verifiedNFTs: { mintAddress: string; tokenId: string }[];
   onSelectionChange: (selectedTokenIds: string[]) => void;
   onLinkNFTs: (selectedTokenIds: string[]) => Promise<void>;
   isLinking: boolean;
@@ -27,6 +28,7 @@ interface NFTSelectionProps {
 export function NFTSelection({ 
   solanaAddress, 
   evmAddress, 
+  verifiedNFTs,
   onSelectionChange, 
   onLinkNFTs, 
   isLinking 
@@ -36,33 +38,19 @@ export function NFTSelection({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchNFTsWithStatus = useCallback(async () => {
+  const fetchLinkingStatus = useCallback(async () => {
+    if (!verifiedNFTs.length) return;
+    
     setLoading(true);
     setError(null);
     
     try {
-      // First, get the NFTs from the wallet
-      const verifyResponse = await fetch('/api/verify-solana', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          address: solanaAddress,
-          nonce: 'temp' // We'll handle nonce properly later
-        }),
-      });
-
-      if (!verifyResponse.ok) {
-        throw new Error('Failed to fetch NFTs');
-      }
-
-      const verifyData = await verifyResponse.json();
-      
-      // Then, get the linking status for each NFT
+      // Get the linking status for each NFT
       const linkingStatusResponse = await fetch('/api/nft-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          tokenIds: verifyData.nfts?.map((nft: any) => nft.tokenId) || []
+          tokenIds: verifiedNFTs.map(nft => nft.tokenId)
         }),
       });
 
@@ -73,29 +61,29 @@ export function NFTSelection({
         linkingStatuses = statusData.statuses || {};
       }
 
-      // Combine NFT data with linking status
-      const nftsWithStatus = verifyData.nfts?.map((nft: any) => ({
+      // Combine verified NFT data with linking status
+      const nftsWithStatus = verifiedNFTs.map((nft) => ({
         mintAddress: nft.mintAddress,
         tokenId: nft.tokenId,
         name: `Wassieverse #${nft.tokenId}`,
         isLinked: linkingStatuses[nft.tokenId]?.isLinked || false,
         linkedTo: linkingStatuses[nft.tokenId]?.linkedTo
-      })) || [];
+      }));
 
       setNfts(nftsWithStatus);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load NFTs');
+      setError(err instanceof Error ? err.message : 'Failed to load NFT status');
     } finally {
       setLoading(false);
     }
-  }, [solanaAddress]);
+  }, [verifiedNFTs]);
 
-  // Fetch NFTs and their linking status
+  // Fetch linking status when verified NFTs change
   useEffect(() => {
-    if (solanaAddress) {
-      fetchNFTsWithStatus();
+    if (verifiedNFTs.length > 0) {
+      fetchLinkingStatus();
     }
-  }, [solanaAddress, evmAddress, fetchNFTsWithStatus]);
+  }, [verifiedNFTs, evmAddress, fetchLinkingStatus]);
 
   const handleNFTSelect = (tokenId: string, checked: boolean) => {
     const newSelection = checked 
@@ -140,7 +128,7 @@ export function NFTSelection({
           <div className="text-center text-red-600">
             <p>Error loading NFTs: {error}</p>
             <Button 
-              onClick={fetchNFTsWithStatus} 
+              onClick={fetchLinkingStatus} 
               variant="outline" 
               className="mt-2"
             >

@@ -4,7 +4,16 @@ import { randomBytes } from "crypto";
 
 export async function POST(req: NextRequest) {
   try {
-    const { address } = await req.json();
+    let address: string;
+    
+    try {
+      const body = await req.json();
+      address = body.address;
+    } catch (jsonError) {
+      // If JSON parsing fails, try to get address from query params
+      const url = new URL(req.url);
+      address = url.searchParams.get('address') || '';
+    }
 
     if (!address) {
       return NextResponse.json(

@@ -16,7 +16,7 @@ import bs58 from "bs58";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 interface SolanaWalletConnectorProps {
-  onVerified: (data: { solAddress: string; tokenIds: string[]; signature: string }) => void;
+  onVerified: (data: { solAddress: string; tokenIds: string[]; signature: string; nfts: { mintAddress: string; tokenId: string }[] }) => void;
 }
 
 export function SolanaWalletConnector({ onVerified }: SolanaWalletConnectorProps) {
@@ -105,6 +105,7 @@ export function SolanaWalletConnector({ onVerified }: SolanaWalletConnectorProps
           solAddress,
           tokenIds: verifyData.tokenIds,
           signature: signatureBase58,
+          nfts: verifyData.nfts || [],
         });
       }
     } catch (error: any) {

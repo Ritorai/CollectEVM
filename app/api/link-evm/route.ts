@@ -5,6 +5,17 @@ import { getWassieverseNFTs } from "@/lib/solana";
 
 export async function POST(req: NextRequest) {
   try {
+    let requestData;
+    try {
+      requestData = await req.json();
+    } catch (jsonError) {
+      console.error("JSON parsing error:", jsonError);
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 }
+      );
+    }
+
     const {
       solanaAddress,
       evmAddress,
@@ -12,7 +23,7 @@ export async function POST(req: NextRequest) {
       message,
       nonce,
       solanaSignature,
-    } = await req.json();
+    } = requestData;
 
     if (
       !solanaAddress ||
@@ -55,9 +66,12 @@ export async function POST(req: NextRequest) {
 
     // 2. Verify EVM signature
     try {
+      console.log("Verifying EVM signature:", { message, evmSignature, evmAddress });
       const recoveredAddress = verifyMessage(message, evmSignature);
+      console.log("Recovered address:", recoveredAddress);
 
       if (recoveredAddress.toLowerCase() !== evmAddress.toLowerCase()) {
+        console.log("Address mismatch:", { recovered: recoveredAddress, expected: evmAddress });
         return NextResponse.json(
           { error: "Invalid EVM signature" },
           { status: 400 }
@@ -92,6 +106,7 @@ export async function POST(req: NextRequest) {
 
     // Extract token IDs for database storage
     const tokenIds = nfts.map(nft => nft.tokenId);
+    const tokenIdsJson = JSON.stringify(tokenIds);
 
     // 4. Check for already linked NFTs (prevent double-linking)
     const alreadyLinkedNFTs = await prisma.linkedNFT.findMany({
@@ -139,7 +154,7 @@ export async function POST(req: NextRequest) {
         },
       },
       update: {
-        tokenIds,
+        tokenIds: tokenIdsJson,
         solanaSignature,
         evmSignature,
         updatedAt: new Date(),
@@ -147,7 +162,7 @@ export async function POST(req: NextRequest) {
       create: {
         solanaAddress,
         evmAddress: evmAddress.toLowerCase(),
-        tokenIds,
+        tokenIds: tokenIdsJson,
         solanaSignature,
         evmSignature,
       },
@@ -208,7 +223,7 @@ export async function POST(req: NextRequest) {
       data: {
         solanaAddress: walletLink.solanaAddress,
         evmAddress: walletLink.evmAddress,
-        tokenIds: walletLink.tokenIds,
+        tokenIds: tokenIds, // Return as array for frontend
         verifiedAt: walletLink.verifiedAt,
       },
     });
