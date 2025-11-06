@@ -164,6 +164,7 @@ export function NFTSelection({
     
     setSelectedTokenIds(newSelection);
     onSelectionChange(newSelection);
+    console.log('NFT Selection updated:', { tokenId, checked, newSelection, solanaAddress, evmAddress });
   };
 
   const handleSelectAllUnlinked = () => {
@@ -239,6 +240,17 @@ export function NFTSelection({
   const allLinkedNFTsFiltered = allLinkedNFTs.filter(linkedNft => 
     !nfts.some(currentNft => currentNft.tokenId === linkedNft.tokenId)
   );
+
+  // Debug: Log button visibility conditions
+  const shouldShowButton = selectedTokenIds.length > 0 && evmAddress && solanaAddress;
+  if (selectedTokenIds.length > 0) {
+    console.log('Button visibility check:', { 
+      selectedCount: selectedTokenIds.length, 
+      hasEvm: !!evmAddress, 
+      hasSolana: !!solanaAddress, 
+      shouldShow: shouldShowButton 
+    });
+  }
 
   return (
     <div className={`space-y-6 ${isDisabled ? "opacity-50 pointer-events-none" : ""}`}>
@@ -318,17 +330,22 @@ export function NFTSelection({
         </Card>
       )}
 
-      {/* Link Selected NFTs Button */}
-      {selectedTokenIds.length > 0 && evmAddress && solanaAddress && (
+      {/* Link Selected NFTs Button - Show when NFTs are selected */}
+      {selectedTokenIds.length > 0 && evmAddress && (
         <Card>
           <CardContent className="p-6">
             <div className="text-center space-y-4">
               <p className="text-lg">
                 Ready to link <strong>{selectedTokenIds.length}</strong> NFT(s) to your EVM wallet?
               </p>
+              {!solanaAddress && (
+                <p className="text-sm text-amber-600">
+                  Please verify your Solana wallet first
+                </p>
+              )}
               <Button 
                 onClick={() => onLinkNFTs(selectedTokenIds)}
-                disabled={isLinking}
+                disabled={isLinking || !solanaAddress}
                 className="w-full"
               >
                 {isLinking ? (
