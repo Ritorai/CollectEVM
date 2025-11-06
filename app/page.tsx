@@ -20,7 +20,7 @@ export default function Home() {
     nfts?: { mintAddress: string; tokenId: string }[];
   } | null>(null);
 
-  const [selectedTokenIds, setSelectedTokenIds] = useState<string[]>([]);
+  const [, setSelectedTokenIds] = useState<string[]>([]);
   const [isLinking, setIsLinking] = useState(false);
 
   const handleEVMConnected = (_address: string) => {
@@ -67,7 +67,7 @@ export default function Home() {
       let evmSignature: string;
       try {
         evmSignature = await signMessageAsync({ message });
-      } catch (error) {
+      } catch {
         toast({
           title: "Signature cancelled",
           description: "You need to sign the message to link your wallets",

@@ -5,8 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Link, Unlink } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Loader2, Link } from 'lucide-react';
 
 interface NFT {
   mintAddress: string;
@@ -36,7 +35,6 @@ export function NFTSelection({
   isLinking 
 }: NFTSelectionProps) {
   const isDisabled = !evmAddress;
-  const { toast } = useToast();
   const [nfts, setNfts] = useState<NFT[]>([]);
   const [allLinkedNFTs, setAllLinkedNFTs] = useState<NFT[]>([]); // All NFTs linked to EVM from any Solana wallet
   const [selectedTokenIds, setSelectedTokenIds] = useState<string[]>([]);
@@ -257,14 +255,6 @@ export function NFTSelection({
     );
   }
 
-  // NFTs from current Solana wallet
-  const unlinkedNFTs = nfts.filter(nft => !nft.isLinked);
-  const linkedNFTsFromCurrent = nfts.filter(nft => nft.isLinked);
-  
-  // All linked NFTs (from any Solana wallet) - filter out duplicates from current wallet
-  const allLinkedNFTsFiltered = allLinkedNFTs.filter(linkedNft => 
-    !nfts.some(currentNft => currentNft.tokenId === linkedNft.tokenId)
-  );
 
   // Debug: Log button visibility conditions
   if (selectedTokenIds.length > 0) {
