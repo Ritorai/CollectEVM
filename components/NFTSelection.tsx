@@ -191,12 +191,17 @@ export function NFTSelection({
 
   const handleSelectAllUnlinked = () => {
     // Get unlinked NFTs from verifiedNFTs
-    const unlinkedTokenIds = verifiedNFTs
-      .filter(nft => !allLinkedNFTs.some(linked => linked.tokenId === nft.tokenId))
-      .map(nft => nft.tokenId);
+    const unlinkedNFTs = verifiedNFTs.filter(nft => {
+      const isLinked = allLinkedNFTs.some(linked => linked.tokenId === nft.tokenId);
+      return !isLinked;
+    });
     
-    setSelectedTokenIds(unlinkedTokenIds);
-    onSelectionChange(unlinkedTokenIds);
+    // Use unlinked NFTs if available, otherwise use all verifiedNFTs
+    const nftsToSelect = unlinkedNFTs.length > 0 ? unlinkedNFTs : verifiedNFTs;
+    const tokenIdsToSelect = nftsToSelect.map(nft => nft.tokenId);
+    
+    setSelectedTokenIds(tokenIdsToSelect);
+    onSelectionChange(tokenIdsToSelect);
   };
 
   const handleClearSelection = () => {
@@ -267,10 +272,26 @@ export function NFTSelection({
     });
   }
 
-  // Get unlinked NFTs from verifiedNFTs
+  // Get unlinked NFTs from verifiedNFTs - filter out ones that are already linked
   const unlinkedVerifiedNFTs = verifiedNFTs.filter(nft => {
     const isLinked = allLinkedNFTs.some(linked => linked.tokenId === nft.tokenId);
     return !isLinked;
+  });
+
+  // Determine what to show in "Available for Linking"
+  // Always show verifiedNFTs if they exist, but filter to unlinked ones if allLinkedNFTs is loaded
+  // This ensures NFTs show immediately after verification, even before allLinkedNFTs loads
+  const nftsToShow = verifiedNFTs.length > 0 
+    ? (allLinkedNFTs.length > 0 ? unlinkedVerifiedNFTs : verifiedNFTs)
+    : [];
+
+  console.log('🎯 NFTSelection render:', {
+    verifiedNFTsCount: verifiedNFTs.length,
+    allLinkedNFTsCount: allLinkedNFTs.length,
+    unlinkedVerifiedNFTsCount: unlinkedVerifiedNFTs.length,
+    nftsToShowCount: nftsToShow.length,
+    willShowAvailableSection: nftsToShow.length > 0,
+    verifiedNFTs: verifiedNFTs.map(n => n.tokenId)
   });
 
   return (
@@ -284,9 +305,9 @@ export function NFTSelection({
               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                 {allLinkedNFTs.length} Linked
               </Badge>
-              {unlinkedVerifiedNFTs.length > 0 && (
+              {nftsToShow.length > 0 && (
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                  {unlinkedVerifiedNFTs.length} Available
+                  {nftsToShow.length} Available
                 </Badge>
               )}
             </div>
@@ -321,21 +342,19 @@ export function NFTSelection({
               </div>
             )}
 
-            {/* Available for Linking NFTs Section - Show verifiedNFTs directly if we have them */}
-            {(unlinkedVerifiedNFTs.length > 0 || verifiedNFTs.length > 0) && (
+            {/* Available for Linking NFTs Section - ALWAYS show if we have verifiedNFTs */}
+            {nftsToShow.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-muted-foreground">Available for Linking</h3>
                   <div className="flex space-x-2">
-                    {(unlinkedVerifiedNFTs.length > 0 || verifiedNFTs.length > 0) && (
-                      <Button 
-                        onClick={handleSelectAllUnlinked}
-                        variant="outline"
-                        size="sm"
-                      >
-                        Select All ({unlinkedVerifiedNFTs.length > 0 ? unlinkedVerifiedNFTs.length : verifiedNFTs.length})
-                      </Button>
-                    )}
+                    <Button 
+                      onClick={handleSelectAllUnlinked}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Select All ({nftsToShow.length})
+                    </Button>
                     {selectedTokenIds.length > 0 && (
                       <Button 
                         onClick={handleClearSelection}
@@ -348,8 +367,7 @@ export function NFTSelection({
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Show unlinked NFTs first, or all verifiedNFTs if no linked check yet */}
-                  {(unlinkedVerifiedNFTs.length > 0 ? unlinkedVerifiedNFTs : verifiedNFTs).map((nft) => {
+                  {nftsToShow.map((nft) => {
                     console.log('🎨 Rendering available NFT:', nft);
                     return (
                       <div key={nft.tokenId} className="border rounded-lg p-4 bg-blue-50 border-blue-200 relative">
@@ -377,7 +395,7 @@ export function NFTSelection({
             )}
 
             {/* Empty State */}
-            {allLinkedNFTs.length === 0 && unlinkedVerifiedNFTs.length === 0 && (
+            {allLinkedNFTs.length === 0 && nftsToShow.length === 0 && !loading && (
               <div className="text-center text-gray-600 py-8">
                 <p>No Wassieverse NFTs found.</p>
                 <p className="text-sm mt-2">Connect your Solana wallet and verify NFT ownership to see your NFTs here.</p>
