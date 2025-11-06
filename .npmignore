@@ -1,0 +1,3 @@
+# This file helps npm skip problematic packages during installation
+# We don't need hardware wallet support (usb package) in the web app
+

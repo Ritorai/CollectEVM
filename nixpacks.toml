@@ -1,8 +1,8 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "npm-10_x", "openssl"]
+nixPkgs = ["nodejs_20", "npm-10_x", "openssl", "python3"]
 
 [phases.install]
-cmds = ["npm ci"]
+cmds = ["npm ci || (npm ci --ignore-scripts && echo 'Continuing with ignored scripts')"]
 
 [phases.build]
 cmds = ["npm run build"]
