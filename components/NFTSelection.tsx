@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Link, Unlink } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface NFT {
   mintAddress: string;
@@ -35,11 +36,17 @@ export function NFTSelection({
   isLinking 
 }: NFTSelectionProps) {
   const isDisabled = !evmAddress;
+  const { toast } = useToast();
   const [nfts, setNfts] = useState<NFT[]>([]);
   const [allLinkedNFTs, setAllLinkedNFTs] = useState<NFT[]>([]); // All NFTs linked to EVM from any Solana wallet
   const [selectedTokenIds, setSelectedTokenIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Debug: Log when solanaAddress changes
+  useEffect(() => {
+    console.log('NFTSelection solanaAddress changed:', { solanaAddress, verifiedNFTsCount: verifiedNFTs.length });
+  }, [solanaAddress, verifiedNFTs.length]);
 
   const fetchLinkingStatus = useCallback(async () => {
     if (!evmAddress) {
@@ -125,7 +132,7 @@ export function NFTSelection({
           setNfts(nftsWithStatus);
         } catch (statusErr) {
           console.error('Error fetching NFT status:', statusErr);
-          // If status check fails, just mark all as unlinked
+          // If status check fails, just mark all as unlinked (don't clear existing nfts)
           const nftsWithStatus = verifiedNFTs.map((nft) => ({
             mintAddress: nft.mintAddress,
             tokenId: nft.tokenId,
@@ -134,8 +141,9 @@ export function NFTSelection({
           }));
           setNfts(nftsWithStatus);
         }
-      } else {
-        // No verified NFTs from current Solana wallet
+      } else if (!solanaAddress) {
+        // Only clear NFTs if there's no Solana address at all
+        // If solanaAddress exists but no verifiedNFTs, keep existing nfts (might be loading)
         setNfts([]);
       }
     } catch (err) {
@@ -150,12 +158,14 @@ export function NFTSelection({
   }, [verifiedNFTs, evmAddress]);
 
   // Fetch linking status when EVM address or verified NFTs change
+  // Only refetch if verifiedNFTs actually changes (not just length, but content)
+  const verifiedNFTsKey = verifiedNFTs.map(nft => nft.tokenId).join(',');
   useEffect(() => {
     if (evmAddress) {
       fetchLinkingStatus();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [evmAddress, verifiedNFTs?.length]);
+  }, [evmAddress, verifiedNFTsKey]);
 
   const handleNFTSelect = (tokenId: string, checked: boolean) => {
     const newSelection = checked 
@@ -242,13 +252,13 @@ export function NFTSelection({
   );
 
   // Debug: Log button visibility conditions
-  const shouldShowButton = selectedTokenIds.length > 0 && evmAddress && solanaAddress;
   if (selectedTokenIds.length > 0) {
     console.log('Button visibility check:', { 
       selectedCount: selectedTokenIds.length, 
       hasEvm: !!evmAddress, 
-      hasSolana: !!solanaAddress, 
-      shouldShow: shouldShowButton 
+      hasSolana: !!solanaAddress,
+      solanaAddress: solanaAddress,
+      verifiedNFTsCount: verifiedNFTs?.length || 0
     });
   }
 
@@ -339,12 +349,27 @@ export function NFTSelection({
                 Ready to link <strong>{selectedTokenIds.length}</strong> NFT(s) to your EVM wallet?
               </p>
               {!solanaAddress && (
-                <p className="text-sm text-amber-600">
-                  Please verify your Solana wallet first
-                </p>
+                <div className="space-y-2">
+                  <p className="text-sm text-amber-600 font-semibold">
+                    Please verify your Solana wallet first
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Go to Step 2 above and click "Verify NFT Ownership" after connecting your Solana wallet
+                  </p>
+                </div>
               )}
               <Button 
-                onClick={() => onLinkNFTs(selectedTokenIds)}
+                onClick={() => {
+                  if (!solanaAddress) {
+                    toast({
+                      title: "Verification required",
+                      description: "Please verify your Solana wallet in Step 2 first",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  onLinkNFTs(selectedTokenIds);
+                }}
                 disabled={isLinking || !solanaAddress}
                 className="w-full"
               >

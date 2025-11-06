@@ -29,12 +29,8 @@ export default function Home() {
     setSelectedTokenIds([]);
   };
 
-  // Reset selection when Solana wallet changes
-  React.useEffect(() => {
-    if (solanaData) {
-      setSelectedTokenIds([]);
-    }
-  }, [solanaData?.solAddress]);
+  // Don't clear selection when verifying - only clear when wallet actually changes
+  // Selection should persist through verification
 
   const handleLinkNFTs = async (tokenIds: string[]) => {
     if (!solanaData || !evmAddress) return;
