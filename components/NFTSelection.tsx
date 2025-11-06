@@ -192,9 +192,10 @@ export function NFTSelection({
   };
 
   const handleSelectAllUnlinked = () => {
-    const unlinkedTokenIds = nfts
-      .filter(nft => !nft.isLinked)
-      .map(nft => nft.tokenId);
+    // Use verifiedNFTs directly if available, otherwise use nfts
+    const unlinkedTokenIds = verifiedNFTs.length > 0
+      ? verifiedNFTs.map(nft => nft.tokenId)
+      : nfts.filter(nft => !nft.isLinked).map(nft => nft.tokenId);
     
     setSelectedTokenIds(unlinkedTokenIds);
     onSelectionChange(unlinkedTokenIds);
@@ -296,95 +297,30 @@ export function NFTSelection({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Show verified NFTs directly in this section */}
-          {verifiedNFTs && verifiedNFTs.length > 0 ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {verifiedNFTs.map((nft) => {
-                  console.log('🎨 Rendering NFT:', nft);
-                  const isLinked = nfts.find(n => n.tokenId === nft.tokenId)?.isLinked || false;
-                  if (isLinked) {
-                    console.log('⏭️ Skipping linked NFT:', nft.tokenId);
-                    return null;
-                  }
-                  
-                  return (
-                    <div key={nft.tokenId} className="border rounded-lg p-4 bg-blue-50 border-blue-200">
-                      <div className="flex items-center space-x-3">
-                        <Checkbox
-                          checked={selectedTokenIds.includes(nft.tokenId)}
-                          onCheckedChange={(checked) => 
-                            handleNFTSelect(nft.tokenId, checked as boolean)
-                          }
-                        />
-                        <div className="flex-1">
-                          <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
-                          <p className="text-sm text-gray-600">Ready to link</p>
-                        </div>
-                        <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
-                          Available
-                        </Badge>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex space-x-2">
-                {verifiedNFTs.length > 0 && (
-                  <Button 
-                    onClick={() => {
-                      const unlinkedIds = verifiedNFTs
-                        .filter(nft => !nfts.find(n => n.tokenId === nft.tokenId)?.isLinked)
-                        .map(nft => nft.tokenId);
-                      unlinkedIds.forEach(id => {
-                        if (!selectedTokenIds.includes(id)) {
-                          handleNFTSelect(id, true);
-                        }
-                      });
-                    }}
-                    variant="outline"
-                    size="sm"
-                  >
-                    Select All Available ({verifiedNFTs.filter(nft => !nfts.find(n => n.tokenId === nft.tokenId)?.isLinked).length})
-                  </Button>
-                )}
-                {selectedTokenIds.length > 0 && (
-                  <Button 
-                    onClick={handleClearSelection}
-                    variant="outline"
-                    size="sm"
-                  >
-                    Clear Selection
-                  </Button>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="flex space-x-2">
-              {unlinkedNFTs.length > 0 && (
-                <Button 
-                  onClick={handleSelectAllUnlinked}
-                  variant="outline"
-                  size="sm"
-                >
-                  Select All Unlinked ({unlinkedNFTs.length})
-                </Button>
-              )}
-              {selectedTokenIds.length > 0 && (
-                <Button 
-                  onClick={handleClearSelection}
-                  variant="outline"
-                  size="sm"
-                >
-                  Clear Selection
-                </Button>
-              )}
-            </div>
-          )}
+          <div className="flex space-x-2">
+            {verifiedNFTs.length > 0 && (
+              <Button 
+                onClick={handleSelectAllUnlinked}
+                variant="outline"
+                size="sm"
+              >
+                Select All Unlinked ({verifiedNFTs.length})
+              </Button>
+            )}
+            {selectedTokenIds.length > 0 && (
+              <Button 
+                onClick={handleClearSelection}
+                variant="outline"
+                size="sm"
+              >
+                Clear Selection
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Available NFTs for Linking - ALWAYS show if verifiedNFTs has items */}
+      {/* Available NFTs for Linking - Show verifiedNFTs directly */}
       {verifiedNFTs.length > 0 && (
         <Card>
           <CardHeader>
@@ -395,33 +331,25 @@ export function NFTSelection({
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {verifiedNFTs.map((nft) => {
-                // Check if this NFT is already linked
-                const isLinked = nfts.find(n => n.tokenId === nft.tokenId)?.isLinked || false;
-                
-                // Only show if not linked
-                if (isLinked) return null;
-                
-                return (
-                  <div key={nft.tokenId} className="border rounded-lg p-4 bg-blue-50 border-blue-200">
-                    <div className="flex items-center space-x-3">
-                      <Checkbox
-                        checked={selectedTokenIds.includes(nft.tokenId)}
-                        onCheckedChange={(checked) => 
-                          handleNFTSelect(nft.tokenId, checked as boolean)
-                        }
-                      />
-                      <div className="flex-1">
-                        <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
-                        <p className="text-sm text-gray-600">Ready to link</p>
-                      </div>
-                      <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
-                        Available
-                      </Badge>
+              {verifiedNFTs.map((nft) => (
+                <div key={nft.tokenId} className="border rounded-lg p-4 bg-blue-50 border-blue-200">
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      checked={selectedTokenIds.includes(nft.tokenId)}
+                      onCheckedChange={(checked) => 
+                        handleNFTSelect(nft.tokenId, checked as boolean)
+                      }
+                    />
+                    <div className="flex-1">
+                      <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
+                      <p className="text-sm text-gray-600">Ready to link</p>
                     </div>
+                    <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                      Available
+                    </Badge>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -440,31 +368,12 @@ export function NFTSelection({
                   ✓ Solana wallet verified: {solanaAddress.slice(0, 6)}...{solanaAddress.slice(-4)}
                 </p>
               ) : (
-                <div className="space-y-2">
-                  <p className="text-sm text-amber-600 font-semibold">
-                    Please verify your Solana wallet first
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Go to Step 2 above and click &quot;Verify NFT Ownership&quot; after connecting your Solana wallet
-                  </p>
-                  <p className="text-xs text-red-600 font-mono">
-                    Debug: solanaAddress = {solanaAddress || 'NULL'}
-                  </p>
-                </div>
+                <p className="text-sm text-amber-600 font-semibold">
+                  Please verify your Solana wallet first
+                </p>
               )}
               <Button 
-                onClick={() => {
-                  console.log('Link button clicked:', { solanaAddress, selectedTokenIds, verifiedNFTsCount: verifiedNFTs.length });
-                  if (!solanaAddress) {
-                    toast({
-                      title: "Verification required",
-                      description: `solanaAddress is ${solanaAddress || 'null'}. Please verify your Solana wallet in Step 2 first`,
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-                  onLinkNFTs(selectedTokenIds);
-                }}
+                onClick={() => onLinkNFTs(selectedTokenIds)}
                 disabled={isLinking || !solanaAddress}
                 className="w-full"
               >
