@@ -113,7 +113,12 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
           nfts: verifyData.nfts || [],
         };
         
-        console.log('SolanaWalletConnector: Calling onVerified with:', verifiedData);
+        console.log('✅ SolanaWalletConnector: Calling onVerified with:', verifiedData);
+        console.log('📦 NFT data:', {
+          nftsArray: verifyData.nfts,
+          nftsLength: verifyData.nfts?.length,
+          nftsString: JSON.stringify(verifyData.nfts)
+        });
         
         toast({
           title: "Solana wallet verified!",

@@ -45,12 +45,14 @@ export function NFTSelection({
 
   // Debug: Log when solanaAddress or verifiedNFTs changes
   useEffect(() => {
-    console.log('NFTSelection props changed:', { 
+    console.log('🔍 NFTSelection props changed:', { 
       solanaAddress, 
       verifiedNFTsCount: verifiedNFTs.length,
       verifiedNFTs: verifiedNFTs,
+      verifiedNFTsArray: JSON.stringify(verifiedNFTs),
       nftsCount: nfts.length,
-      unlinkedCount: nfts.filter(nft => !nft.isLinked).length
+      unlinkedCount: nfts.filter(nft => !nft.isLinked).length,
+      willShowNFTs: verifiedNFTs.length > 0
     });
   }, [solanaAddress, verifiedNFTs, nfts]);
 
@@ -295,12 +297,16 @@ export function NFTSelection({
         </CardHeader>
         <CardContent>
           {/* Show verified NFTs directly in this section */}
-          {verifiedNFTs.length > 0 ? (
+          {verifiedNFTs && verifiedNFTs.length > 0 ? (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {verifiedNFTs.map((nft) => {
+                  console.log('🎨 Rendering NFT:', nft);
                   const isLinked = nfts.find(n => n.tokenId === nft.tokenId)?.isLinked || false;
-                  if (isLinked) return null;
+                  if (isLinked) {
+                    console.log('⏭️ Skipping linked NFT:', nft.tokenId);
+                    return null;
+                  }
                   
                   return (
                     <div key={nft.tokenId} className="border rounded-lg p-4 bg-blue-50 border-blue-200">

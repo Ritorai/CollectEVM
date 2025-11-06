@@ -31,10 +31,12 @@ export default function Home() {
 
   // Debug: Log when solanaData changes
   React.useEffect(() => {
-    console.log('Home: solanaData changed:', { 
+    console.log('🏠 Home: solanaData changed:', { 
       hasSolanaData: !!solanaData, 
       solAddress: solanaData?.solAddress,
-      nftCount: solanaData?.nfts?.length 
+      nftCount: solanaData?.nfts?.length,
+      nfts: solanaData?.nfts,
+      nftsString: JSON.stringify(solanaData?.nfts)
     });
   }, [solanaData]);
 
