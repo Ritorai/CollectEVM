@@ -44,17 +44,22 @@ if [ $PRISMA_EXIT_CODE -eq 0 ]; then
   echo "✅ Database schema pushed successfully!"
   echo "   Tables should now exist in your PostgreSQL database"
   
-  # Create the WalletSummary view
+  # Create the WalletSummary view using raw SQL
   echo ""
   echo "📊 Creating WalletSummary view..."
-  if [ -f "prisma/migrations/create_wallet_summary_view.sql" ]; then
-    npx prisma db execute --stdin < prisma/migrations/create_wallet_summary_view.sql 2>&1 || {
-      echo "⚠️  View creation failed (might already exist), continuing..."
-    }
-    echo "✅ WalletSummary view created/updated"
-  else
-    echo "⚠️  View SQL file not found, skipping view creation"
-  fi
+  npx prisma db execute --stdin <<'EOF' 2>&1 || echo "⚠️  View creation failed (might already exist), continuing..."
+CREATE OR REPLACE VIEW "WalletSummary" AS
+SELECT 
+  wl."solanaAddress",
+  wl."evmAddress",
+  COUNT(ln.id)::integer AS "tokenCount",
+  wl."verifiedAt",
+  wl."updatedAt"
+FROM "WalletLink" wl
+LEFT JOIN "LinkedNFT" ln ON ln."walletLinkId" = wl.id
+GROUP BY wl.id, wl."solanaAddress", wl."evmAddress", wl."verifiedAt", wl."updatedAt";
+EOF
+  echo "✅ WalletSummary view created/updated"
 else
   echo ""
   echo "❌ Database setup failed with exit code: $PRISMA_EXIT_CODE"
