@@ -52,8 +52,8 @@ model LinkedNFT {
   // Relation back to WalletLink
   walletLink        WalletLink  @relation(fields: [walletLinkId], references: [id], onDelete: Cascade)
 
-  @@unique([tokenId, evmAddress]) // One token ID can only be linked to one EVM address
-  @@unique([mintAddress, evmAddress]) // One mint address can only be linked to one EVM address
+  @@unique([tokenId]) // Token IDs can only be linked ONCE globally - prevents relinking sold/transferred NFTs
+  @@unique([mintAddress, evmAddress]) // One mint address can only be linked to one EVM address (but can be relinked if sold to new wallet)
   @@index([tokenId])
   @@index([solanaAddress])
   @@index([evmAddress])
