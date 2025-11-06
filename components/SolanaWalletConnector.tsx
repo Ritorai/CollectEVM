@@ -16,10 +16,11 @@ import bs58 from "bs58";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 interface SolanaWalletConnectorProps {
+  evmAddress: string | null;
   onVerified: (data: { solAddress: string; tokenIds: string[]; signature: string; nfts: { mintAddress: string; tokenId: string }[] }) => void;
 }
 
-export function SolanaWalletConnector({ onVerified }: SolanaWalletConnectorProps) {
+export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletConnectorProps) {
   const { publicKey, signMessage, connected } = useWallet();
   const { toast } = useToast();
   const [isVerifying, setIsVerifying] = useState(false);
@@ -120,25 +121,32 @@ export function SolanaWalletConnector({ onVerified }: SolanaWalletConnectorProps
     }
   };
 
+  const disabled = !evmAddress;
+
   return (
-    <Card>
+    <Card className={disabled ? "opacity-50" : ""}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          Step 1: Connect Solana Wallet
+          Step 2: Connect Solana Wallet
           {isVerified && <CheckCircle2 className="h-5 w-5 text-green-500" />}
         </CardTitle>
         <CardDescription>
-          Connect your Phantom wallet to verify Wassieverse NFT ownership
+          {disabled
+            ? "Complete Step 1 first - connect your EVM wallet"
+            : "Connect your Phantom wallet to verify Wassieverse NFT ownership"}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-col gap-3">
-          <WalletMultiButton className="!bg-primary !text-primary-foreground hover:!bg-primary/90 !h-10 !px-4 !rounded-md !text-sm !font-medium" />
+          <WalletMultiButton 
+            className="!bg-primary !text-primary-foreground hover:!bg-primary/90 !h-10 !px-4 !rounded-md !text-sm !font-medium"
+            disabled={disabled}
+          />
           
           {connected && !isVerified && (
             <Button
               onClick={handleVerify}
-              disabled={isVerifying}
+              disabled={isVerifying || disabled}
               className="w-full"
             >
               {isVerifying ? (
@@ -155,7 +163,7 @@ export function SolanaWalletConnector({ onVerified }: SolanaWalletConnectorProps
           {isVerified && nftCount !== null && (
             <div className="bg-green-50 border border-green-200 rounded-md p-4">
               <p className="text-sm text-green-800">
-                ✓ Verified! Found {nftCount} Wassieverse NFT{nftCount !== 1 ? "s" : ""} in your wallet
+                ✓ Verified! Found {nftCount} Wassieverse NFT{nftCount !== 1 ? "s" : ""} in this wallet
               </p>
             </div>
           )}

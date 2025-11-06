@@ -3,10 +3,16 @@
 import { useState } from "react";
 import { SolanaWalletConnector } from "@/components/SolanaWalletConnector";
 import { EVMWalletConnector } from "@/components/EVMWalletConnector";
-import { NFTDisplay } from "@/components/NFTDisplay";
 import { NFTSelection } from "@/components/NFTSelection";
+import { EVMProfile } from "@/components/EVMProfile";
+import { useAccount, useSignMessage } from "wagmi";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
+  const { address: evmAddress, isConnected } = useAccount();
+  const { signMessageAsync } = useSignMessage();
+  const { toast } = useToast();
+
   const [solanaData, setSolanaData] = useState<{
     solAddress: string;
     tokenIds: string[];
@@ -14,80 +20,102 @@ export default function Home() {
     nfts?: { mintAddress: string; tokenId: string }[];
   } | null>(null);
 
-  const [evmAddress, setEvmAddress] = useState<string | null>(null);
   const [selectedTokenIds, setSelectedTokenIds] = useState<string[]>([]);
   const [isLinking, setIsLinking] = useState(false);
+  const [showAddWallet, setShowAddWallet] = useState(false);
+  const [profileKey, setProfileKey] = useState(0); // Force profile refresh
 
-  const [linkedData, setLinkedData] = useState<{
-    solanaAddress: string;
-    evmAddress: string;
-    tokenIds: string[];
-    verifiedAt: string;
-  } | null>(null);
+  const handleEVMConnected = (address: string) => {
+    // Reset state when EVM wallet changes
+    setSolanaData(null);
+    setShowAddWallet(false);
+    setProfileKey((prev) => prev + 1);
+  };
 
-  const handleLinkNFTs = async (_tokenIds: string[]) => {
+  const handleLinkNFTs = async (tokenIds: string[]) => {
     if (!solanaData || !evmAddress) return;
 
     setIsLinking(true);
     try {
-      // Generate nonce
-      const nonceResponse = await fetch('/api/nonce', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      // Step 1: Get a new nonce for EVM linking
+      const nonceResponse = await fetch("/api/nonce", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ address: solanaData.solAddress }),
       });
 
-      if (!nonceResponse.ok) throw new Error('Failed to get nonce');
+      if (!nonceResponse.ok) {
+        throw new Error("Failed to get nonce");
+      }
+
       const { nonce } = await nonceResponse.json();
 
-      // Request Solana signature (you'll need to implement this)
-      // For now, we'll use the existing signature
-      const solanaSignature = solanaData.signature;
+      // Step 2: Create message and sign with EVM wallet
+      const message = `I confirm linking my EVM wallet ${evmAddress} to my Solana wallet ${solanaData.solAddress} | nonce: ${nonce}`;
 
-      // Create message for EVM signature
-      const evmMessage = `Link Solana wallet ${solanaData.solAddress} to EVM wallet ${evmAddress}. Nonce: ${nonce}`;
-      
-      // Request EVM signature (you'll need to implement this)
-      // For now, we'll use a placeholder
-      const evmSignature = "placeholder_signature";
+      let evmSignature: string;
+      try {
+        evmSignature = await signMessageAsync({ message });
+      } catch (error) {
+        toast({
+          title: "Signature cancelled",
+          description: "You need to sign the message to link your wallets",
+          variant: "destructive",
+        });
+        setIsLinking(false);
+        return;
+      }
 
-      // Link the wallets
-      const linkResponse = await fetch('/api/link-evm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      // Step 3: Send to backend for verification and linking
+      const linkResponse = await fetch("/api/link-evm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           solanaAddress: solanaData.solAddress,
           evmAddress,
           evmSignature,
-          message: evmMessage,
+          message,
           nonce,
-          solanaSignature,
+          solanaSignature: solanaData.signature,
         }),
       });
 
+      const linkData = await linkResponse.json();
+
       if (!linkResponse.ok) {
-        const errorData = await linkResponse.json();
-        throw new Error(errorData.error || 'Failed to link wallets');
+        throw new Error(linkData.error || "Failed to link wallets");
       }
 
-      const linkData = await linkResponse.json();
-      setLinkedData({
-        solanaAddress: solanaData.solAddress,
-        evmAddress,
-        tokenIds: linkData.data.tokenIds,
-        verifiedAt: new Date().toISOString(),
+      toast({
+        title: "Wallets linked successfully!",
+        description: `Your ${linkData.data.tokenIds.length} Wassieverse NFT(s) are now linked to your EVM wallet`,
       });
 
-      // Clear selection
+      // Reset Solana data and show profile
+      setSolanaData(null);
       setSelectedTokenIds([]);
-      
-    } catch (error) {
-      console.error('Linking failed:', error);
-      alert(`Linking failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setShowAddWallet(false);
+      setProfileKey((prev) => prev + 1); // Refresh profile
+    } catch (error: any) {
+      console.error("Linking error:", error);
+      toast({
+        title: "Linking failed",
+        description: error.message || "Failed to link wallets",
+        variant: "destructive",
+      });
     } finally {
       setIsLinking(false);
     }
   };
+
+  const handleAddAnotherWallet = () => {
+    setShowAddWallet(true);
+    setSolanaData(null);
+    setSelectedTokenIds([]);
+  };
+
+  // Show profile if EVM is connected and we're not in the process of adding a wallet
+  const showProfile = isConnected && evmAddress && !showAddWallet && !solanaData;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -99,46 +127,56 @@ export default function Home() {
               Wassieverse NFT Wallet Linker
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Verify your Wassieverse NFT ownership on Solana and securely link
-              your EVM wallet for cross-chain benefits.
+              Connect your EVM wallet to create your profile, then link Wassieverse NFTs from your Solana wallets.
             </p>
           </div>
 
           {/* Main Content */}
           <div className="grid gap-6">
-            <SolanaWalletConnector onVerified={setSolanaData} />
-            
-            {solanaData && (
-              <NFTSelection
-                solanaAddress={solanaData.solAddress}
+            {/* Step 1: EVM Wallet Connection */}
+            <EVMWalletConnector onConnected={handleEVMConnected} />
+
+            {/* Step 2: Solana Wallet Connection (only if EVM is connected) */}
+            {isConnected && evmAddress && (showAddWallet || !showProfile) && (
+              <>
+                <SolanaWalletConnector
+                  evmAddress={evmAddress}
+                  onVerified={setSolanaData}
+                />
+
+                {/* NFT Selection and Linking */}
+                {solanaData && (
+                  <NFTSelection
+                    solanaAddress={solanaData.solAddress}
+                    evmAddress={evmAddress}
+                    verifiedNFTs={solanaData.nfts || []}
+                    onSelectionChange={setSelectedTokenIds}
+                    onLinkNFTs={handleLinkNFTs}
+                    isLinking={isLinking}
+                  />
+                )}
+              </>
+            )}
+
+            {/* EVM Profile View */}
+            {showProfile && (
+              <EVMProfile
+                key={profileKey}
                 evmAddress={evmAddress}
-                verifiedNFTs={solanaData.nfts || []}
-                onSelectionChange={setSelectedTokenIds}
-                onLinkNFTs={handleLinkNFTs}
-                isLinking={isLinking}
+                onAddAnotherWallet={handleAddAnotherWallet}
               />
             )}
-            
-            <EVMWalletConnector
-              solanaData={solanaData}
-              onLinked={(data) => {
-                setLinkedData(data);
-                setEvmAddress(data.evmAddress);
-              }}
-            />
-            
-            {linkedData && <NFTDisplay linkedData={linkedData} />}
           </div>
 
           {/* Footer Info */}
           <div className="bg-muted/50 rounded-lg p-6 text-sm text-muted-foreground space-y-2">
             <h3 className="font-semibold text-foreground">How it works:</h3>
             <ol className="list-decimal list-inside space-y-1">
-              <li>Connect your Phantom wallet and sign a message to verify ownership</li>
-              <li>Our server checks the Solana blockchain for Wassieverse NFTs</li>
-              <li>Connect your MetaMask or EVM wallet and sign to create the link</li>
-              <li>Both signatures are verified server-side before storing the mapping</li>
-              <li>Your wallet addresses and NFT IDs are securely saved in our database</li>
+              <li>Connect your EVM wallet (MetaMask, WalletConnect, etc.) - this becomes your profile</li>
+              <li>Connect your Solana wallet (Phantom, etc.) and verify NFT ownership</li>
+              <li>Select and link your Wassieverse NFTs to your EVM profile</li>
+              <li>Add more Solana wallets to link additional NFTs to the same EVM profile</li>
+              <li>All your NFTs from different Solana wallets are aggregated in one place</li>
             </ol>
           </div>
         </div>
@@ -146,4 +184,3 @@ export default function Home() {
     </div>
   );
 }
-
