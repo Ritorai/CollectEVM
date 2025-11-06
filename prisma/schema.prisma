@@ -23,14 +23,17 @@ model Nonce {
 }
 
 model WalletLink {
-  id                String   @id @default(cuid())
+  id                String      @id @default(cuid())
   solanaAddress     String
   evmAddress        String
-  tokenIds          String   // JSON string of NFT token IDs
+  tokenIds          String      // JSON string of NFT token IDs (legacy, kept for compatibility)
   solanaSignature   String
   evmSignature      String
-  verifiedAt        DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  verifiedAt        DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relation to linked NFTs
+  linkedNFTs        LinkedNFT[]
 
   @@unique([solanaAddress, evmAddress])
   @@index([solanaAddress])
@@ -38,14 +41,19 @@ model WalletLink {
 }
 
 model LinkedNFT {
-  id                String   @id @default(cuid())
-  tokenId           String   @unique // Unique token ID (e.g., "564")
-  mintAddress       String   @unique // The actual NFT mint address
-  solanaAddress     String   // Wallet that owns this NFT
-  evmAddress        String   // Linked EVM wallet
-  walletLinkId      String   // Reference to the WalletLink
-  linkedAt          DateTime @default(now())
+  id                String      @id @default(cuid())
+  tokenId           String      // Token ID (e.g., "564")
+  mintAddress       String      // The actual NFT mint address
+  solanaAddress     String      // Wallet that owns this NFT
+  evmAddress        String      // Linked EVM wallet
+  walletLinkId      String      // Reference to the WalletLink
+  linkedAt          DateTime    @default(now())
+  
+  // Relation back to WalletLink
+  walletLink        WalletLink  @relation(fields: [walletLinkId], references: [id], onDelete: Cascade)
 
+  @@unique([tokenId, evmAddress]) // One token ID can only be linked to one EVM address
+  @@unique([mintAddress, evmAddress]) // One mint address can only be linked to one EVM address
   @@index([tokenId])
   @@index([solanaAddress])
   @@index([evmAddress])

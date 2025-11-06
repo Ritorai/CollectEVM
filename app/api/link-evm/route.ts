@@ -217,6 +217,13 @@ export async function POST(req: NextRequest) {
       console.log(`✅ Created ${linkedNFTs.length} LinkedNFT entries:`, linkedNFTs.map(nft => `Token ID ${nft.tokenId}`));
     }
 
+    // Get the count of linked NFTs for this EVM address
+    const nftCount = await prisma.linkedNFT.count({
+      where: {
+        evmAddress: evmAddress.toLowerCase(),
+      },
+    });
+
     return NextResponse.json({
       success: true,
       message: "Wallets linked successfully",
@@ -224,6 +231,7 @@ export async function POST(req: NextRequest) {
         solanaAddress: walletLink.solanaAddress,
         evmAddress: walletLink.evmAddress,
         tokenIds: tokenIds, // Return as array for frontend
+        tokenCount: nftCount, // Total count of NFTs linked to this EVM address
         verifiedAt: walletLink.verifiedAt,
       },
     });
