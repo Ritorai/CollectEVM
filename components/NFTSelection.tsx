@@ -310,6 +310,71 @@ export function NFTSelection({
         </CardContent>
       </Card>
 
+      {/* Available NFTs for Linking */}
+      {unlinkedNFTs.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Unlink className="h-5 w-5 text-blue-600" />
+              <span>Available for Linking</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {unlinkedNFTs.map((nft) => (
+                <div key={nft.tokenId} className="border rounded-lg p-4 bg-blue-50 border-blue-200">
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      checked={selectedTokenIds.includes(nft.tokenId)}
+                      onCheckedChange={(checked) => 
+                        handleNFTSelect(nft.tokenId, checked as boolean)
+                      }
+                    />
+                    <div className="flex-1">
+                      <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
+                      <p className="text-sm text-gray-600">Ready to link</p>
+                    </div>
+                    <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                      Available
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Link Selected NFTs Button */}
+      {selectedTokenIds.length > 0 && evmAddress && solanaAddress && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center space-y-4">
+              <p className="text-lg">
+                Ready to link <strong>{selectedTokenIds.length}</strong> NFT(s) to your EVM wallet?
+              </p>
+              <Button 
+                onClick={() => onLinkNFTs(selectedTokenIds)}
+                disabled={isLinking}
+                className="w-full"
+              >
+                {isLinking ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Linking NFTs...
+                  </>
+                ) : (
+                  <>
+                    <Link className="h-4 w-4 mr-2" />
+                    Link Selected NFTs
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* All Linked NFTs (from any Solana wallet) */}
       <Card>
         <CardHeader>
@@ -365,71 +430,6 @@ export function NFTSelection({
           )}
         </CardContent>
       </Card>
-
-      {/* Available NFTs for Linking */}
-      {unlinkedNFTs.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Unlink className="h-5 w-5 text-blue-600" />
-              <span>Available for Linking</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {unlinkedNFTs.map((nft) => (
-                <div key={nft.tokenId} className="border rounded-lg p-4 bg-blue-50 border-blue-200">
-                  <div className="flex items-center space-x-3">
-                    <Checkbox
-                      checked={selectedTokenIds.includes(nft.tokenId)}
-                      onCheckedChange={(checked) => 
-                        handleNFTSelect(nft.tokenId, checked as boolean)
-                      }
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
-                      <p className="text-sm text-gray-600">Ready to link</p>
-                    </div>
-                    <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
-                      Available
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Link Selected NFTs */}
-      {selectedTokenIds.length > 0 && evmAddress && solanaAddress && (
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center space-y-4">
-              <p className="text-lg">
-                Ready to link <strong>{selectedTokenIds.length}</strong> NFT(s) to your EVM wallet?
-              </p>
-              <Button 
-                onClick={() => onLinkNFTs(selectedTokenIds)}
-                disabled={isLinking}
-                className="w-full"
-              >
-                {isLinking ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Linking NFTs...
-                  </>
-                ) : (
-                  <>
-                    <Link className="h-4 w-4 mr-2" />
-                    Link Selected NFTs
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
