@@ -106,17 +106,21 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
         setIsVerified(true);
         setNftCount(verifyData.tokenIds.length);
         
+        const verifiedData = {
+          solAddress,
+          tokenIds: verifyData.tokenIds,
+          signature: signatureBase58,
+          nfts: verifyData.nfts || [],
+        };
+        
+        console.log('SolanaWalletConnector: Calling onVerified with:', verifiedData);
+        
         toast({
           title: "Solana wallet verified!",
           description: `Found ${verifyData.tokenIds.length} Wassieverse NFT(s)`,
         });
 
-        onVerified({
-          solAddress,
-          tokenIds: verifyData.tokenIds,
-          signature: signatureBase58,
-          nfts: verifyData.nfts || [],
-        });
+        onVerified(verifiedData);
       }
     } catch (err: unknown) {
       console.error("Verification error:", err);

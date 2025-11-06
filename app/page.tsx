@@ -29,6 +29,15 @@ export default function Home() {
     setSelectedTokenIds([]);
   };
 
+  // Debug: Log when solanaData changes
+  React.useEffect(() => {
+    console.log('Home: solanaData changed:', { 
+      hasSolanaData: !!solanaData, 
+      solAddress: solanaData?.solAddress,
+      nftCount: solanaData?.nfts?.length 
+    });
+  }, [solanaData]);
+
   // Don't clear selection when verifying - only clear when wallet actually changes
   // Selection should persist through verification
 

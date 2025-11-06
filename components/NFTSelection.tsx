@@ -348,7 +348,11 @@ export function NFTSelection({
               <p className="text-lg">
                 Ready to link <strong>{selectedTokenIds.length}</strong> NFT(s) to your EVM wallet?
               </p>
-              {!solanaAddress && (
+              {solanaAddress ? (
+                <p className="text-sm text-green-600 font-semibold">
+                  ✓ Solana wallet verified: {solanaAddress.slice(0, 6)}...{solanaAddress.slice(-4)}
+                </p>
+              ) : (
                 <div className="space-y-2">
                   <p className="text-sm text-amber-600 font-semibold">
                     Please verify your Solana wallet first
@@ -360,6 +364,7 @@ export function NFTSelection({
               )}
               <Button 
                 onClick={() => {
+                  console.log('Link button clicked:', { solanaAddress, selectedTokenIds });
                   if (!solanaAddress) {
                     toast({
                       title: "Verification required",
