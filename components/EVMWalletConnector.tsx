@@ -14,12 +14,27 @@ import { CheckCircle2, Wallet } from "lucide-react";
 
 interface EVMWalletConnectorProps {
   onConnected: (address: string) => void;
+  onDisconnected?: () => void;
 }
 
-export function EVMWalletConnector({ onConnected }: EVMWalletConnectorProps) {
-  const { address, isConnected } = useAccount();
+export function EVMWalletConnector({ onConnected, onDisconnected }: EVMWalletConnectorProps) {
+  const { address: wagmiAddress, isConnected: wagmiIsConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
+
+  // Lock address in component - persist even if wagmi disconnects
+  const [lockedAddress, setLockedAddress] = React.useState<string | undefined>(undefined);
+  
+  // Use locked address for display, wagmi address for actual connection state
+  const address = lockedAddress || wagmiAddress;
+  const isConnected = lockedAddress ? true : wagmiIsConnected; // Show as connected if we have locked address
+
+  React.useEffect(() => {
+    if (wagmiAddress && wagmiIsConnected) {
+      setLockedAddress(wagmiAddress);
+    }
+    // Don't clear lockedAddress when wagmi disconnects - keep it locked until user clicks disconnect
+  }, [wagmiAddress, wagmiIsConnected]);
 
   const handleConnect = () => {
     const injectedConnector = connectors.find((c) => c.id === "injected");
@@ -36,24 +51,28 @@ export function EVMWalletConnector({ onConnected }: EVMWalletConnectorProps) {
   const prevAddressRef = React.useRef<string | undefined>(undefined);
   React.useEffect(() => {
     // Track connection state changes
-    if (prevIsConnectedRef.current && !isConnected) {
-      // Wallet was disconnected - check if it was manual
-      console.log('🔄 EVM wallet disconnected');
+    if (prevIsConnectedRef.current && !wagmiIsConnected) {
+      // Wallet was disconnected in wagmi - but we keep it locked
+      if (lockedAddress) {
+        console.log('🔒 EVM wallet disconnected in extension, but address is locked - keeping profile active');
+      } else {
+        console.log('🔄 EVM wallet disconnected');
+      }
     }
-    prevIsConnectedRef.current = isConnected;
+    prevIsConnectedRef.current = wagmiIsConnected;
 
-    if (isConnected && address && address !== prevAddressRef.current) {
-      prevAddressRef.current = address;
+    if (wagmiAddress && wagmiIsConnected && wagmiAddress !== prevAddressRef.current) {
+      prevAddressRef.current = wagmiAddress;
       wasManuallyDisconnectedRef.current = false;
-      onConnected(address);
-    } else if (!isConnected && prevAddressRef.current) {
-      // Wallet disconnected - only reset if it wasn't manual
+      onConnected(wagmiAddress);
+    } else if (!wagmiIsConnected && prevAddressRef.current && !lockedAddress) {
+      // Wallet disconnected and not locked - only reset if it wasn't manual
       if (!wasManuallyDisconnectedRef.current) {
         console.log('⚠️ EVM wallet disconnected unexpectedly - this should not happen when switching Solana wallets');
       }
       prevAddressRef.current = undefined;
     }
-  }, [isConnected, address, onConnected]);
+  }, [wagmiIsConnected, wagmiAddress, onConnected, lockedAddress]);
 
   return (
     <Card>
@@ -91,7 +110,14 @@ export function EVMWalletConnector({ onConnected }: EVMWalletConnectorProps) {
               <Button
                 onClick={() => {
                   wasManuallyDisconnectedRef.current = true;
-                  disconnect();
+                  setLockedAddress(undefined); // Clear locked address
+                  if (wagmiIsConnected) {
+                    disconnect(); // Only disconnect if actually connected
+                  }
+                  // Notify parent that user explicitly disconnected
+                  if (onDisconnected) {
+                    onDisconnected();
+                  }
                 }}
                 variant="outline"
                 className="w-full"

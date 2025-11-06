@@ -9,9 +9,13 @@ import { useAccount, useSignMessage } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
-  const { address: evmAddress } = useAccount();
+  const { address: evmAddressFromWagmi, isConnected: isEVMConnectedFromWagmi } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const { toast } = useToast();
+
+  // Lock EVM address in UI - persist even if wallet extension disconnects
+  // Only clear when user explicitly clicks "Disconnect EVM Wallet"
+  const [lockedEvmAddress, setLockedEvmAddress] = useState<string | null>(null);
 
   const [solanaData, setSolanaData] = useState<{
     solAddress: string;
@@ -23,6 +27,21 @@ export default function Home() {
   const [, setSelectedTokenIds] = useState<string[]>([]);
   const [isLinking, setIsLinking] = useState(false);
 
+  // Use locked address if available, otherwise use live address from wagmi
+  const evmAddress = lockedEvmAddress || evmAddressFromWagmi || null;
+
+  // Update locked address when wallet connects (but don't clear if it disconnects)
+  React.useEffect(() => {
+    if (evmAddressFromWagmi && isEVMConnectedFromWagmi) {
+      // Wallet connected - lock the address
+      if (lockedEvmAddress !== evmAddressFromWagmi) {
+        console.log('🔒 Locking EVM address:', evmAddressFromWagmi);
+        setLockedEvmAddress(evmAddressFromWagmi);
+      }
+    }
+    // Don't clear lockedEvmAddress when wallet disconnects - keep it locked until user clicks disconnect
+  }, [evmAddressFromWagmi, isEVMConnectedFromWagmi, lockedEvmAddress]);
+
   const prevEvmAddressRef = React.useRef<string | null>(null);
   const handleEVMConnected = (_address: string) => {
     // Only reset state when EVM wallet ACTUALLY changes (not on every render)
@@ -31,7 +50,17 @@ export default function Home() {
       console.log('🔄 EVM wallet changed, resetting solanaData');
       setSolanaData(null);
       setSelectedTokenIds([]);
+      // Lock the new address
+      setLockedEvmAddress(_address);
     }
+  };
+
+  const handleEVMDisconnected = () => {
+    // User explicitly clicked "Disconnect EVM Wallet" - clear the lock
+    console.log('🔓 Unlocking EVM address - user explicitly disconnected');
+    setLockedEvmAddress(null);
+    setSolanaData(null);
+    setSelectedTokenIds([]);
   };
 
   const handleSolanaVerified = (data: { solAddress: string; tokenIds: string[]; signature: string; nfts?: { mintAddress: string; tokenId: string }[] }) => {
@@ -156,7 +185,10 @@ export default function Home() {
           {/* Main Content */}
           <div className="grid gap-6">
             {/* Step 1: EVM Wallet Connection */}
-            <EVMWalletConnector onConnected={handleEVMConnected} />
+            <EVMWalletConnector 
+              onConnected={handleEVMConnected}
+              onDisconnected={handleEVMDisconnected}
+            />
 
             {/* Step 2: Solana Wallet Connection - Always show, grayed out until EVM connected */}
             <SolanaWalletConnector
