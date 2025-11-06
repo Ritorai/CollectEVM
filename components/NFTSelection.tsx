@@ -322,34 +322,7 @@ export function NFTSelection({
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {/* Linked NFTs Section */}
-            {allLinkedNFTs.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-muted-foreground mb-3">Already Linked</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {allLinkedNFTs.map((nft) => (
-                    <div key={nft.tokenId} className="border rounded-lg p-4 bg-green-50 border-green-200">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
-                          <p className="text-sm text-gray-600">
-                            {nft.linkedFromSolana && (
-                              <span>Linked from: {nft.linkedFromSolana.slice(0, 6)}...{nft.linkedFromSolana.slice(-4)}</span>
-                            )}
-                          </p>
-                        </div>
-                        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
-                          <Link className="h-3 w-3 mr-1" />
-                          Linked
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Available for Linking NFTs Section - ALWAYS show if we have verifiedNFTs */}
+            {/* Available for Linking NFTs Section - ALWAYS show if we have verifiedNFTs - ABOVE Already Linked */}
             {shouldShowAvailableSection && (
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -400,6 +373,33 @@ export function NFTSelection({
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Linked NFTs Section - BELOW Available for Linking */}
+            {allLinkedNFTs.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground mb-3">Already Linked</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {allLinkedNFTs.map((nft) => (
+                    <div key={nft.tokenId} className="border rounded-lg p-4 bg-green-50 border-green-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
+                          <p className="text-sm text-gray-600">
+                            {nft.linkedFromSolana && (
+                              <span>Linked from: {nft.linkedFromSolana.slice(0, 6)}...{nft.linkedFromSolana.slice(-4)}</span>
+                            )}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+                          <Link className="h-3 w-3 mr-1" />
+                          Linked
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
