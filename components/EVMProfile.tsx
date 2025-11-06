@@ -50,20 +50,25 @@ export function EVMProfile({ evmAddress, onAddAnotherWallet }: EVMProfileProps) 
     setError(null);
     try {
       const response = await fetch(`/api/evm-profile?evmAddress=${evmAddress}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch profile");
-      }
       const result = await response.json();
+      
+      if (!response.ok) {
+        const errorMsg = result.details || result.error || "Failed to fetch profile";
+        throw new Error(errorMsg);
+      }
+      
       if (result.success) {
         setProfileData(result.data);
       } else {
         throw new Error(result.error || "Failed to fetch profile");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load profile");
+      const errorMessage = err instanceof Error ? err.message : "Failed to load profile";
+      setError(errorMessage);
+      console.error("Profile fetch error:", err);
       toast({
         title: "Error",
-        description: "Failed to load your profile",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -91,12 +96,13 @@ export function EVMProfile({ evmAddress, onAddAnotherWallet }: EVMProfileProps) 
     );
   }
 
-  if (error || !profileData) {
+  if (error) {
     return (
       <Card>
         <CardContent className="p-6">
           <div className="text-center space-y-4">
-            <p className="text-red-600">{error || "No profile data found"}</p>
+            <p className="text-red-600 font-semibold">Failed to load your profile:</p>
+            <p className="text-sm text-muted-foreground">{error}</p>
             <Button onClick={fetchProfile} variant="outline">
               <RefreshCw className="mr-2 h-4 w-4" />
               Retry
@@ -105,6 +111,10 @@ export function EVMProfile({ evmAddress, onAddAnotherWallet }: EVMProfileProps) 
         </CardContent>
       </Card>
     );
+  }
+
+  if (!profileData) {
+    return null;
   }
 
   return (

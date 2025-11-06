@@ -59,6 +59,7 @@ export async function GET(req: NextRequest) {
       updatedAt: link.updatedAt,
     }));
 
+    // Return profile data even if empty (no wallet links yet)
     return NextResponse.json({
       success: true,
       data: {
@@ -76,8 +77,13 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error("Error fetching EVM profile:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Internal server error" },
+      { 
+        success: false,
+        error: "Internal server error",
+        details: errorMessage 
+      },
       { status: 500 }
     );
   }
