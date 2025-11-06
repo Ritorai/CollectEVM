@@ -360,15 +360,18 @@ export function NFTSelection({
                   <p className="text-xs text-muted-foreground">
                     Go to Step 2 above and click &quot;Verify NFT Ownership&quot; after connecting your Solana wallet
                   </p>
+                  <p className="text-xs text-red-600 font-mono">
+                    Debug: solanaAddress = {solanaAddress || 'NULL'}
+                  </p>
                 </div>
               )}
               <Button 
                 onClick={() => {
-                  console.log('Link button clicked:', { solanaAddress, selectedTokenIds });
+                  console.log('Link button clicked:', { solanaAddress, selectedTokenIds, verifiedNFTsCount: verifiedNFTs.length });
                   if (!solanaAddress) {
                     toast({
                       title: "Verification required",
-                      description: "Please verify your Solana wallet in Step 2 first",
+                      description: `solanaAddress is ${solanaAddress || 'null'}. Please verify your Solana wallet in Step 2 first`,
                       variant: "destructive",
                     });
                     return;

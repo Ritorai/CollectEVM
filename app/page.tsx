@@ -144,9 +144,10 @@ export default function Home() {
 
             {/* NFT Selection - Always show, grayed out until EVM connected */}
             <NFTSelection
-              solanaAddress={solanaData?.solAddress || null}
-              evmAddress={evmAddress || null}
-              verifiedNFTs={solanaData?.nfts || []}
+              key={`nft-selection-${solanaData?.solAddress || 'no-solana'}-${evmAddress || 'no-evm'}`}
+              solanaAddress={solanaData?.solAddress ?? null}
+              evmAddress={evmAddress ?? null}
+              verifiedNFTs={solanaData?.nfts ?? []}
               onSelectionChange={setSelectedTokenIds}
               onLinkNFTs={handleLinkNFTs}
               isLinking={isLinking}
