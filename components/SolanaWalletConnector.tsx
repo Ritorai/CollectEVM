@@ -109,7 +109,7 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
         // Ensure nfts array is present
         const nftsArray = verifyData.nfts || [];
         
-        console.log('✅ SolanaWalletConnector: Verification response:', {
+        console.log('✅ SolanaWalletConnector: Verification response from API:', {
           verified: verifyData.verified,
           tokenIds: verifyData.tokenIds,
           tokenIdsLength: verifyData.tokenIds?.length,
@@ -120,18 +120,18 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
           fullResponse: JSON.stringify(verifyData)
         });
         
-        const verifiedData = {
+        const dataToPass = {
           solAddress,
           tokenIds: verifyData.tokenIds,
           signature: signatureBase58,
           nfts: nftsArray,
         };
         
-        console.log('📤 SolanaWalletConnector: Calling onVerified with:', verifiedData);
+        console.log('📤 SolanaWalletConnector: Calling onVerified with:', dataToPass);
         console.log('📦 Final NFT data being passed:', {
-          nfts: verifiedData.nfts,
-          nftsLength: verifiedData.nfts.length,
-          nftsString: JSON.stringify(verifiedData.nfts)
+          nfts: dataToPass.nfts,
+          nftsLength: dataToPass.nfts.length,
+          nftsString: JSON.stringify(dataToPass.nfts)
         });
         
         toast({
@@ -139,7 +139,7 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
           description: `Found ${verifyData.tokenIds.length} Wassieverse NFT(s)`,
         });
 
-        onVerified(verifiedData);
+        onVerified(dataToPass);
       }
     } catch (err: unknown) {
       console.error("Verification error:", err);
