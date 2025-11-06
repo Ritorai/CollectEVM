@@ -218,14 +218,18 @@ export async function POST(req: NextRequest) {
     // For create, we need evmSignature - use provided one or get from existing EVM link
     let createEvmSignature = evmSignature;
     if (!createEvmSignature && existingEvmLink) {
-      // EVM address already linked - use the existing signature
+      // EVM address already linked with a different Solana wallet - use the existing signature
       createEvmSignature = existingEvmLink.evmSignature;
-      console.log('📋 Using existing EVM signature from previous link');
-    } else if (!createEvmSignature) {
+      console.log('📋 Using existing EVM signature from previous link (EVM already linked)');
+    } else if (!createEvmSignature && !existingWalletLink) {
       // No signature and no existing link - this shouldn't happen if logic is correct
       // But provide empty string as fallback (schema requires it)
       createEvmSignature = '';
       console.warn('⚠️ No EVM signature provided and no existing link - using empty string');
+    } else if (!createEvmSignature && existingWalletLink) {
+      // Updating existing link - use the existing signature
+      createEvmSignature = existingWalletLink.evmSignature;
+      console.log('📋 Using existing EVM signature from current link (updating)');
     }
 
     const walletLink = await prisma.walletLink.upsert({
