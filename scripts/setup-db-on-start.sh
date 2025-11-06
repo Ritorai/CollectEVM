@@ -60,6 +60,20 @@ LEFT JOIN "LinkedNFT" ln ON ln."walletLinkId" = wl.id
 GROUP BY wl.id, wl."solanaAddress", wl."evmAddress", wl."verifiedAt", wl."updatedAt";
 EOF
   echo "✅ WalletSummary view created/updated"
+  
+  # Create the EVMAirdrop view - aggregates WalletSummary by EVM address
+  echo ""
+  echo "📊 Creating EVMAirdrop view..."
+  npx prisma db execute --stdin <<'EOF' 2>&1 || echo "⚠️  View creation failed (might already exist), continuing..."
+CREATE OR REPLACE VIEW "EVMAirdrop" AS
+SELECT 
+  ws."evmAddress" AS "EVM",
+  SUM(ws."tokenCount")::integer AS "Amount"
+FROM "WalletSummary" ws
+GROUP BY ws."evmAddress"
+ORDER BY "Amount" DESC;
+EOF
+  echo "✅ EVMAirdrop view created/updated"
 else
   echo ""
   echo "❌ Database setup failed with exit code: $PRISMA_EXIT_CODE"
