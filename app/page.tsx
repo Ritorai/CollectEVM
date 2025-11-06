@@ -62,8 +62,8 @@ export default function Home() {
   // Don't clear selection when verifying - only clear when wallet actually changes
   // Selection should persist through verification
 
-  const handleLinkNFTs = async (_tokenIds: string[]) => {
-    if (!solanaData || !evmAddress) return;
+  const handleLinkNFTs = async (selectedTokenIds: string[]) => {
+    if (!solanaData || !evmAddress || selectedTokenIds.length === 0) return;
 
     setIsLinking(true);
     try {
@@ -96,7 +96,7 @@ export default function Home() {
         return;
       }
 
-      // Step 3: Send to backend for verification and linking
+      // Step 3: Send to backend for verification and linking - pass selected tokenIds
       const linkResponse = await fetch("/api/link-evm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -107,6 +107,7 @@ export default function Home() {
           message,
           nonce,
           solanaSignature: solanaData.signature,
+          selectedTokenIds: selectedTokenIds, // Pass only selected tokenIds
         }),
       });
 
@@ -118,7 +119,7 @@ export default function Home() {
 
       toast({
         title: "Wallets linked successfully!",
-        description: `Your ${linkData.data.tokenIds.length} Wassieverse NFT(s) are now linked to your EVM wallet`,
+        description: `Your ${selectedTokenIds.length} selected Wassieverse NFT(s) are now linked to your EVM wallet`,
       });
 
       // Reset Solana data

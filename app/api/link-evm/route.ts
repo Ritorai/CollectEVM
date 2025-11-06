@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
       message,
       nonce,
       solanaSignature,
+      selectedTokenIds, // Optional: if provided, only link these specific tokenIds
     } = requestData;
 
     if (
@@ -86,11 +87,11 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Re-verify Solana NFT ownership server-side
-    let nfts: { mintAddress: string; tokenId: string }[] = [];
+    let allNFTs: { mintAddress: string; tokenId: string }[] = [];
     try {
-      nfts = await getWassieverseNFTs(solanaAddress);
+      allNFTs = await getWassieverseNFTs(solanaAddress);
 
-      if (nfts.length === 0) {
+      if (allNFTs.length === 0) {
         return NextResponse.json(
           { error: "No Wassieverse NFTs found. Ownership may have changed." },
           { status: 404 }
@@ -104,11 +105,40 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 4. Filter to only selected tokenIds if provided, otherwise use all NFTs
+    let nfts: { mintAddress: string; tokenId: string }[];
+    if (selectedTokenIds && Array.isArray(selectedTokenIds) && selectedTokenIds.length > 0) {
+      // Only link the selected tokenIds - verify user owns them
+      nfts = allNFTs.filter(nft => selectedTokenIds.includes(nft.tokenId));
+      
+      if (nfts.length === 0) {
+        return NextResponse.json(
+          { error: "None of the selected NFTs were found in your wallet. Ownership may have changed." },
+          { status: 404 }
+        );
+      }
+      
+      // Check if user tried to select NFTs they don't own
+      const missingTokenIds = selectedTokenIds.filter(id => !nfts.some(nft => nft.tokenId === id));
+      if (missingTokenIds.length > 0) {
+        return NextResponse.json(
+          { error: `You don't own the following NFTs: ${missingTokenIds.join(', ')}` },
+          { status: 403 }
+        );
+      }
+      
+      console.log(`✅ Linking ${nfts.length} selected NFT(s) out of ${allNFTs.length} total`);
+    } else {
+      // No selection provided - link all NFTs (backward compatibility)
+      nfts = allNFTs;
+      console.log(`✅ Linking all ${nfts.length} NFT(s)`);
+    }
+
     // Extract token IDs for database storage
     const tokenIds = nfts.map(nft => nft.tokenId);
     const tokenIdsJson = JSON.stringify(tokenIds);
 
-    // 4. Check for already linked NFTs (prevent double-linking)
+    // 5. Check for already linked NFTs (prevent double-linking)
     const alreadyLinkedNFTs = await prisma.linkedNFT.findMany({
       where: {
         tokenId: {
@@ -136,7 +166,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 5. Save wallet link to database
+    // 6. Save wallet link to database
     const existingWalletLink = await prisma.walletLink.findUnique({
       where: {
         solanaAddress_evmAddress: {
@@ -168,7 +198,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 6. Handle LinkedNFT entries
+    // 7. Handle LinkedNFT entries
     let linkedNFTs;
     if (existingWalletLink) {
       // Update existing wallet link - add new NFTs to existing ones
