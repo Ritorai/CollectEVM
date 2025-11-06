@@ -279,19 +279,26 @@ export function NFTSelection({
   });
 
   // Determine what to show in "Available for Linking"
-  // Always show verifiedNFTs if they exist, but filter to unlinked ones if allLinkedNFTs is loaded
-  // This ensures NFTs show immediately after verification, even before allLinkedNFTs loads
+  // CRITICAL: Always show verifiedNFTs if they exist, even if allLinkedNFTs hasn't loaded yet
+  // Only filter to unlinked ones AFTER allLinkedNFTs has been loaded
   const nftsToShow = verifiedNFTs.length > 0 
     ? (allLinkedNFTs.length > 0 ? unlinkedVerifiedNFTs : verifiedNFTs)
     : [];
 
-  console.log('🎯 NFTSelection render:', {
+  // FORCE display if verifiedNFTs exists - this is the critical fix
+  // Show the section if we have verifiedNFTs, period. Don't wait for nftsToShow calculation.
+  const shouldShowAvailableSection = verifiedNFTs.length > 0;
+
+  console.log('🎯 NFTSelection render - CRITICAL DEBUG:', {
     verifiedNFTsCount: verifiedNFTs.length,
+    verifiedNFTs: verifiedNFTs,
+    verifiedNFTsString: JSON.stringify(verifiedNFTs),
     allLinkedNFTsCount: allLinkedNFTs.length,
     unlinkedVerifiedNFTsCount: unlinkedVerifiedNFTs.length,
     nftsToShowCount: nftsToShow.length,
-    willShowAvailableSection: nftsToShow.length > 0,
-    verifiedNFTs: verifiedNFTs.map(n => n.tokenId)
+    nftsToShow: nftsToShow,
+    shouldShowAvailableSection: shouldShowAvailableSection,
+    willShowAvailableSection: shouldShowAvailableSection
   });
 
   return (
@@ -305,9 +312,9 @@ export function NFTSelection({
               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                 {allLinkedNFTs.length} Linked
               </Badge>
-              {nftsToShow.length > 0 && (
+              {shouldShowAvailableSection && (
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                  {nftsToShow.length} Available
+                  {nftsToShow.length > 0 ? nftsToShow.length : verifiedNFTs.length} Available
                 </Badge>
               )}
             </div>
@@ -343,18 +350,20 @@ export function NFTSelection({
             )}
 
             {/* Available for Linking NFTs Section - ALWAYS show if we have verifiedNFTs */}
-            {nftsToShow.length > 0 && (
+            {shouldShowAvailableSection && (
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-muted-foreground">Available for Linking</h3>
                   <div className="flex space-x-2">
-                    <Button 
-                      onClick={handleSelectAllUnlinked}
-                      variant="outline"
-                      size="sm"
-                    >
-                      Select All ({nftsToShow.length})
-                    </Button>
+                    {nftsToShow.length > 0 && (
+                      <Button 
+                        onClick={handleSelectAllUnlinked}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Select All ({nftsToShow.length})
+                      </Button>
+                    )}
                     {selectedTokenIds.length > 0 && (
                       <Button 
                         onClick={handleClearSelection}
@@ -367,7 +376,8 @@ export function NFTSelection({
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {nftsToShow.map((nft) => {
+                  {/* Show verifiedNFTs directly if nftsToShow is empty (shouldn't happen, but safety) */}
+                  {(nftsToShow.length > 0 ? nftsToShow : verifiedNFTs).map((nft) => {
                     console.log('🎨 Rendering available NFT:', nft);
                     return (
                       <div key={nft.tokenId} className="border rounded-lg p-4 bg-blue-50 border-blue-200 relative">
@@ -394,8 +404,8 @@ export function NFTSelection({
               </div>
             )}
 
-            {/* Empty State */}
-            {allLinkedNFTs.length === 0 && nftsToShow.length === 0 && !loading && (
+            {/* Empty State - Only show if we truly have no NFTs */}
+            {allLinkedNFTs.length === 0 && verifiedNFTs.length === 0 && !loading && (
               <div className="text-center text-gray-600 py-8">
                 <p>No Wassieverse NFTs found.</p>
                 <p className="text-sm mt-2">Connect your Solana wallet and verify NFT ownership to see your NFTs here.</p>
