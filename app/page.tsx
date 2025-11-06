@@ -34,6 +34,18 @@ export default function Home() {
     }
   };
 
+  const handleSolanaVerified = (data: { solAddress: string; tokenIds: string[]; signature: string; nfts?: { mintAddress: string; tokenId: string }[] }) => {
+    // If solAddress is empty, it means we're clearing/disconnecting
+    if (!data.solAddress || data.solAddress === '') {
+      console.log('🔄 Clearing solanaData due to disconnect');
+      setSolanaData(null);
+      setSelectedTokenIds([]);
+    } else {
+      // Normal verification - set the data
+      setSolanaData(data);
+    }
+  };
+
   // Debug: Log when solanaData changes
   React.useEffect(() => {
     console.log('🏠 Home: solanaData changed:', { 
@@ -148,7 +160,7 @@ export default function Home() {
             {/* Step 2: Solana Wallet Connection - Always show, grayed out until EVM connected */}
             <SolanaWalletConnector
               evmAddress={evmAddress || null}
-              onVerified={setSolanaData}
+              onVerified={handleSolanaVerified}
             />
 
             {/* NFT Selection - Always show, grayed out until EVM connected */}

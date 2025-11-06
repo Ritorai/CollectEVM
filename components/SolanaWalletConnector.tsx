@@ -28,13 +28,58 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
   const [isVerified, setIsVerified] = useState(false);
   const [nftCount, setNftCount] = useState<number | null>(null);
 
+  // Track previous publicKey to detect wallet changes
+  const prevPublicKeyRef = React.useRef<string | null>(null);
+  const prevConnectedRef = React.useRef<boolean>(false);
+
   // Reset verification state when wallet disconnects or changes
   React.useEffect(() => {
-    if (!connected || !publicKey) {
+    const currentPublicKey = publicKey?.toString() || null;
+    const wasConnected = prevConnectedRef.current;
+    const wasPublicKey = prevPublicKeyRef.current;
+    
+    // If wallet disconnected (was connected, now not)
+    if (wasConnected && (!connected || !publicKey)) {
+      console.log('🔄 Solana wallet disconnected, resetting verification state');
       setIsVerified(false);
       setNftCount(null);
+      prevPublicKeyRef.current = null;
+      prevConnectedRef.current = false;
+      // Clear parent state when wallet disconnects
+      onVerified({
+        solAddress: '',
+        tokenIds: [],
+        signature: '',
+        nfts: []
+      });
+    } 
+    // If wallet changed (different publicKey while still connected)
+    else if (connected && publicKey && wasPublicKey && wasPublicKey !== currentPublicKey) {
+      console.log('🔄 Solana wallet changed, resetting verification state');
+      setIsVerified(false);
+      setNftCount(null);
+      prevPublicKeyRef.current = currentPublicKey;
+      prevConnectedRef.current = true;
+      // Clear parent state when wallet changes
+      onVerified({
+        solAddress: '',
+        tokenIds: [],
+        signature: '',
+        nfts: []
+      });
     }
-  }, [connected, publicKey]);
+    // If wallet connected for the first time or reconnected with same key
+    else if (connected && publicKey) {
+      if (!wasPublicKey) {
+        prevPublicKeyRef.current = currentPublicKey;
+      }
+      prevConnectedRef.current = true;
+    }
+    // Update connected state
+    else {
+      prevConnectedRef.current = false;
+    }
+  }, [connected, publicKey, onVerified]);
 
   const handleVerify = async () => {
     if (!publicKey || !signMessage) {
@@ -195,7 +240,14 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
 
           {connected && (
             <Button
-              onClick={() => disconnect()}
+              onClick={async () => {
+                // Clear verification state first
+                setIsVerified(false);
+                setNftCount(null);
+                // Then disconnect the wallet
+                // The useEffect will handle clearing parent state
+                await disconnect();
+              }}
               variant="outline"
               className="w-full"
             >
