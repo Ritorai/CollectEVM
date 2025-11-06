@@ -43,10 +43,16 @@ export function NFTSelection({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Debug: Log when solanaAddress changes
+  // Debug: Log when solanaAddress or verifiedNFTs changes
   useEffect(() => {
-    console.log('NFTSelection solanaAddress changed:', { solanaAddress, verifiedNFTsCount: verifiedNFTs.length });
-  }, [solanaAddress, verifiedNFTs.length]);
+    console.log('NFTSelection props changed:', { 
+      solanaAddress, 
+      verifiedNFTsCount: verifiedNFTs.length,
+      verifiedNFTs: verifiedNFTs,
+      nftsCount: nfts.length,
+      unlinkedCount: nfts.filter(nft => !nft.isLinked).length
+    });
+  }, [solanaAddress, verifiedNFTs, nfts]);
 
   const fetchLinkingStatus = useCallback(async () => {
     if (!evmAddress) {
@@ -102,6 +108,7 @@ export function NFTSelection({
 
       // Then, get the linking status for NFTs in the currently connected Solana wallet (if any)
       if (verifiedNFTs && verifiedNFTs.length > 0) {
+        console.log('Fetching linking status for verified NFTs:', verifiedNFTs);
         try {
           const linkingStatusResponse = await fetch('/api/nft-status', {
             method: 'POST',
@@ -117,6 +124,7 @@ export function NFTSelection({
           if (linkingStatusResponse.ok) {
             const statusData = await linkingStatusResponse.json();
             linkingStatuses = statusData.statuses || {};
+            console.log('Linking statuses received:', linkingStatuses);
           }
 
           // Combine verified NFT data with linking status
@@ -129,6 +137,7 @@ export function NFTSelection({
             linkedFromSolana: linkingStatuses[nft.tokenId]?.solanaAddress
           }));
 
+          console.log('Setting NFTs with status:', nftsWithStatus);
           setNfts(nftsWithStatus);
         } catch (statusErr) {
           console.error('Error fetching NFT status:', statusErr);
@@ -139,12 +148,15 @@ export function NFTSelection({
             name: `Wassieverse #${nft.tokenId}`,
             isLinked: false,
           }));
+          console.log('Error occurred, setting NFTs as unlinked:', nftsWithStatus);
           setNfts(nftsWithStatus);
         }
-      } else if (!solanaAddress) {
-        // Only clear NFTs if there's no Solana address at all
-        // If solanaAddress exists but no verifiedNFTs, keep existing nfts (might be loading)
-        setNfts([]);
+      } else {
+        // Clear NFTs if no verified NFTs (but keep if solanaAddress exists and we're just waiting)
+        if (!solanaAddress || verifiedNFTs.length === 0) {
+          console.log('Clearing NFTs - no verified NFTs or no solanaAddress');
+          setNfts([]);
+        }
       }
     } catch (err) {
       // Only show error for unexpected errors
@@ -305,8 +317,8 @@ export function NFTSelection({
         </CardContent>
       </Card>
 
-      {/* Available NFTs for Linking */}
-      {unlinkedNFTs.length > 0 && (
+      {/* Available NFTs for Linking - Show if we have verified NFTs but they're not in nfts yet, or if we have unlinked NFTs */}
+      {(unlinkedNFTs.length > 0 || (verifiedNFTs.length > 0 && nfts.length === 0 && !loading)) && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -315,27 +327,55 @@ export function NFTSelection({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {unlinkedNFTs.map((nft) => (
-                <div key={nft.tokenId} className="border rounded-lg p-4 bg-blue-50 border-blue-200">
-                  <div className="flex items-center space-x-3">
-                    <Checkbox
-                      checked={selectedTokenIds.includes(nft.tokenId)}
-                      onCheckedChange={(checked) => 
-                        handleNFTSelect(nft.tokenId, checked as boolean)
-                      }
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
-                      <p className="text-sm text-gray-600">Ready to link</p>
+            {unlinkedNFTs.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {unlinkedNFTs.map((nft) => (
+                  <div key={nft.tokenId} className="border rounded-lg p-4 bg-blue-50 border-blue-200">
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        checked={selectedTokenIds.includes(nft.tokenId)}
+                        onCheckedChange={(checked) => 
+                          handleNFTSelect(nft.tokenId, checked as boolean)
+                        }
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
+                        <p className="text-sm text-gray-600">Ready to link</p>
+                      </div>
+                      <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                        Available
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
-                      Available
-                    </Badge>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : verifiedNFTs.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {verifiedNFTs.map((nft) => (
+                  <div key={nft.tokenId} className="border rounded-lg p-4 bg-blue-50 border-blue-200">
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        checked={selectedTokenIds.includes(nft.tokenId)}
+                        onCheckedChange={(checked) => 
+                          handleNFTSelect(nft.tokenId, checked as boolean)
+                        }
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
+                        <p className="text-sm text-gray-600">Ready to link</p>
+                      </div>
+                      <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                        Available
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No NFTs available for linking
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
