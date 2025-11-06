@@ -72,7 +72,7 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
       let signature: Uint8Array;
       try {
         signature = await signMessage(messageBytes);
-      } catch (error) {
+      } catch {
         toast({
           title: "Signature cancelled",
           description: "You need to sign the message to verify ownership",
@@ -118,11 +118,12 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
           nfts: verifyData.nfts || [],
         });
       }
-    } catch (error: any) {
-      console.error("Verification error:", error);
+    } catch (err: unknown) {
+      console.error("Verification error:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to verify Solana wallet";
       toast({
         title: "Verification failed",
-        description: error.message || "Failed to verify Solana wallet",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

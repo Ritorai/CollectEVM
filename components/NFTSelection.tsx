@@ -68,7 +68,7 @@ export function NFTSelection({
           const profileData = await profileResponse.json();
           if (profileData.success) {
             // Convert all linked NFTs to NFT format (handle empty array gracefully)
-            const linkedNFTsList: NFT[] = (profileData.data.nfts || []).map((nft: any) => ({
+            const linkedNFTsList: NFT[] = (profileData.data.nfts || []).map((nft: { mintAddress: string; tokenId: string; solanaAddress: string }) => ({
               mintAddress: nft.mintAddress,
               tokenId: nft.tokenId,
               name: `Wassieverse #${nft.tokenId}`,
@@ -155,7 +155,7 @@ export function NFTSelection({
     } finally {
       setLoading(false);
     }
-  }, [verifiedNFTs, evmAddress]);
+  }, [verifiedNFTs, evmAddress, solanaAddress]);
 
   // Fetch linking status when EVM address or verified NFTs change
   // Only refetch if verifiedNFTs actually changes (not just length, but content)
@@ -354,7 +354,7 @@ export function NFTSelection({
                     Please verify your Solana wallet first
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Go to Step 2 above and click "Verify NFT Ownership" after connecting your Solana wallet
+                    Go to Step 2 above and click &quot;Verify NFT Ownership&quot; after connecting your Solana wallet
                   </p>
                 </div>
               )}

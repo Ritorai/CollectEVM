@@ -1,6 +1,4 @@
 import { Connection, PublicKey } from "@solana/web3.js";
-import * as mpl from "@metaplex-foundation/mpl-token-metadata";
-import { getCache, setCache } from "./redis";
 
 /**
  * IMPORTANT: This is the Collection NFT address (the parent NFT of the collection).
@@ -250,9 +248,9 @@ async function verifyCollectionMembership(connection: Connection, mintAddress: s
       
       // Read basic info
       let offset = 1; // Skip key byte
-      const updateAuthority = new PublicKey(data.slice(offset, offset + 32));
+      // Skip updateAuthority (32 bytes)
       offset += 32;
-      const mint = new PublicKey(data.slice(offset, offset + 32));
+      // Skip mint (32 bytes)
       offset += 32;
       
       // Read name (with length prefix)
@@ -263,16 +261,15 @@ async function verifyCollectionMembership(connection: Connection, mintAddress: s
       
       console.log(`  📋 NFT Name: ${name.trim()}`);
       
-      // Read symbol
+      // Skip symbol
       const symbolLength = data.readUInt32LE(offset);
       offset += 4;
-      const symbol = data.slice(offset, offset + symbolLength).toString('utf8').replace(/\0/g, '');
       offset += symbolLength;
       
-      // Read URI
+      // Skip URI
       const uriLength = data.readUInt32LE(offset);
       offset += 4;
-      const uri = data.slice(offset, offset + uriLength).toString('utf8').replace(/\0/g, '');
+      offset += uriLength;
       
       // Skip seller fee basis points (2 bytes)
       offset += 2;

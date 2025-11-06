@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     const offset = parseInt(searchParams.get("offset") || "0");
 
     // Build where clause
-    const where: any = {};
+    const where: { evmAddress?: string; solanaAddress?: string } = {};
     if (evmAddress) {
       where.evmAddress = evmAddress.toLowerCase();
     }

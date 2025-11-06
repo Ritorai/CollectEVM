@@ -9,7 +9,7 @@ import { useAccount, useSignMessage } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
-  const { address: evmAddress, isConnected } = useAccount();
+  const { address: evmAddress } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const { toast } = useToast();
 
@@ -23,7 +23,7 @@ export default function Home() {
   const [selectedTokenIds, setSelectedTokenIds] = useState<string[]>([]);
   const [isLinking, setIsLinking] = useState(false);
 
-  const handleEVMConnected = (address: string) => {
+  const handleEVMConnected = (_address: string) => {
     // Reset state when EVM wallet changes
     setSolanaData(null);
     setSelectedTokenIds([]);
@@ -32,7 +32,7 @@ export default function Home() {
   // Don't clear selection when verifying - only clear when wallet actually changes
   // Selection should persist through verification
 
-  const handleLinkNFTs = async (tokenIds: string[]) => {
+  const handleLinkNFTs = async (_tokenIds: string[]) => {
     if (!solanaData || !evmAddress) return;
 
     setIsLinking(true);
@@ -94,14 +94,15 @@ export default function Home() {
       // Reset Solana data
       setSolanaData(null);
       setSelectedTokenIds([]);
-    } catch (error: any) {
-      console.error("Linking error:", error);
-      toast({
-        title: "Linking failed",
-        description: error.message || "Failed to link wallets",
-        variant: "destructive",
-      });
-    } finally {
+      } catch (err: unknown) {
+        console.error("Linking error:", err);
+        const errorMessage = err instanceof Error ? err.message : "Failed to link wallets";
+        toast({
+          title: "Linking failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } finally {
       setIsLinking(false);
     }
   };

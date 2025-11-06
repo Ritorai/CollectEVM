@@ -13,7 +13,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Check which token IDs are already linked (optionally filter by EVM address)
-    const whereClause: any = {
+    const whereClause: {
+      tokenId: { in: string[] };
+      evmAddress?: string;
+    } = {
       tokenId: {
         in: tokenIds
       }
