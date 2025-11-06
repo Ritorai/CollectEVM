@@ -51,6 +51,7 @@ export function NFTSelection({
       verifiedNFTsArray: JSON.stringify(verifiedNFTs),
       verifiedNFTsKey: verifiedNFTsKey
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [solanaAddress, verifiedNFTsKey]);
 
   const fetchLinkingStatus = useCallback(async () => {
@@ -177,6 +178,31 @@ export function NFTSelection({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [evmAddress, verifiedNFTsKey, fetchLinkingStatus]);
 
+  // Calculate derived values for display (before early returns)
+  const unlinkedVerifiedNFTs = verifiedNFTs.filter(nft => {
+    const isLinked = allLinkedNFTs.some(linked => linked.tokenId === nft.tokenId);
+    return !isLinked;
+  });
+
+  const nftsToShow = verifiedNFTs.length > 0 
+    ? (allLinkedNFTs.length > 0 ? unlinkedVerifiedNFTs : verifiedNFTs)
+    : [];
+
+  const shouldShowAvailableSection = verifiedNFTs.length > 0;
+
+  // Debug log only when verifiedNFTs changes (moved here to be before early returns)
+  useEffect(() => {
+    if (verifiedNFTs.length > 0) {
+      console.log('🎯 NFTSelection - verifiedNFTs available:', {
+        verifiedNFTsCount: verifiedNFTs.length,
+        verifiedNFTs: verifiedNFTs,
+        nftsToShowCount: nftsToShow.length,
+        shouldShowAvailableSection: shouldShowAvailableSection
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [verifiedNFTsKey]);
+
   const handleNFTSelect = (tokenId: string, checked: boolean) => {
     const newSelection = checked 
       ? [...selectedTokenIds, tokenId]
@@ -269,35 +295,6 @@ export function NFTSelection({
       verifiedNFTsCount: verifiedNFTs?.length || 0
     });
   }
-
-  // Get unlinked NFTs from verifiedNFTs - filter out ones that are already linked
-  const unlinkedVerifiedNFTs = verifiedNFTs.filter(nft => {
-    const isLinked = allLinkedNFTs.some(linked => linked.tokenId === nft.tokenId);
-    return !isLinked;
-  });
-
-  // Determine what to show in "Available for Linking"
-  // CRITICAL: Always show verifiedNFTs if they exist, even if allLinkedNFTs hasn't loaded yet
-  // Only filter to unlinked ones AFTER allLinkedNFTs has been loaded
-  const nftsToShow = verifiedNFTs.length > 0 
-    ? (allLinkedNFTs.length > 0 ? unlinkedVerifiedNFTs : verifiedNFTs)
-    : [];
-
-  // FORCE display if verifiedNFTs exists - this is the critical fix
-  // Show the section if we have verifiedNFTs, period. Don't wait for nftsToShow calculation.
-  const shouldShowAvailableSection = verifiedNFTs.length > 0;
-
-  // Debug log only when verifiedNFTs changes (moved to useEffect to prevent render spam)
-  useEffect(() => {
-    if (verifiedNFTs.length > 0) {
-      console.log('🎯 NFTSelection - verifiedNFTs available:', {
-        verifiedNFTsCount: verifiedNFTs.length,
-        verifiedNFTs: verifiedNFTs,
-        nftsToShowCount: nftsToShow.length,
-        shouldShowAvailableSection: shouldShowAvailableSection
-      });
-    }
-  }, [verifiedNFTsKey, shouldShowAvailableSection, nftsToShow.length]);
 
   return (
     <div className={`space-y-6 ${isDisabled ? "opacity-50 pointer-events-none" : ""}`}>
