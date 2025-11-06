@@ -11,5 +11,5 @@ cmds = [
 ]
 
 [start]
-cmd = "npm start"
+cmd = "bash scripts/setup-db-on-start.sh && npm run start:next"
 
