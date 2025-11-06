@@ -40,6 +40,7 @@ export function NFTSelection({
   const [selectedTokenIds, setSelectedTokenIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statusCheckComplete, setStatusCheckComplete] = useState(false); // Track if status check has completed successfully
 
   // Debug: Log when solanaAddress or verifiedNFTs changes - REMOVED nfts to prevent infinite loop
   const verifiedNFTsKey = verifiedNFTs.map(n => n.tokenId).join(',');
@@ -125,37 +126,38 @@ export function NFTSelection({
             const statusData = await linkingStatusResponse.json();
             linkingStatuses = statusData.statuses || {};
             console.log('Linking statuses received:', linkingStatuses);
+            
+            // Combine verified NFT data with linking status
+            const nftsWithStatus = verifiedNFTs.map((nft) => ({
+              mintAddress: nft.mintAddress,
+              tokenId: nft.tokenId,
+              name: `Wassieverse #${nft.tokenId}`,
+              isLinked: linkingStatuses[nft.tokenId]?.isLinked || false,
+              linkedTo: linkingStatuses[nft.tokenId]?.linkedTo,
+              linkedFromSolana: linkingStatuses[nft.tokenId]?.solanaAddress
+            }));
+
+            console.log('Setting NFTs with status:', nftsWithStatus);
+            setNfts(nftsWithStatus);
+            setStatusCheckComplete(true); // Mark status check as complete
+          } else {
+            // If status check failed, don't mark as complete - don't show NFTs as available
+            console.error('Status check failed:', linkingStatusResponse.status);
+            setStatusCheckComplete(false);
+            setNfts([]);
           }
-
-          // Combine verified NFT data with linking status
-          const nftsWithStatus = verifiedNFTs.map((nft) => ({
-            mintAddress: nft.mintAddress,
-            tokenId: nft.tokenId,
-            name: `Wassieverse #${nft.tokenId}`,
-            isLinked: linkingStatuses[nft.tokenId]?.isLinked || false,
-            linkedTo: linkingStatuses[nft.tokenId]?.linkedTo,
-            linkedFromSolana: linkingStatuses[nft.tokenId]?.solanaAddress
-          }));
-
-          console.log('Setting NFTs with status:', nftsWithStatus);
-          setNfts(nftsWithStatus);
         } catch (statusErr) {
           console.error('Error fetching NFT status:', statusErr);
-          // If status check fails, just mark all as unlinked (don't clear existing nfts)
-          const nftsWithStatus = verifiedNFTs.map((nft) => ({
-            mintAddress: nft.mintAddress,
-            tokenId: nft.tokenId,
-            name: `Wassieverse #${nft.tokenId}`,
-            isLinked: false,
-          }));
-          console.log('Error occurred, setting NFTs as unlinked:', nftsWithStatus);
-          setNfts(nftsWithStatus);
+          // If status check fails, don't show NFTs as available - wait for retry
+          setStatusCheckComplete(false);
+          setNfts([]);
         }
       } else {
         // Clear NFTs if no verified NFTs (but keep if solanaAddress exists and we're just waiting)
         if (!solanaAddress || verifiedNFTs.length === 0) {
           console.log('Clearing NFTs - no verified NFTs or no solanaAddress');
           setNfts([]);
+          setStatusCheckComplete(false);
         }
       }
     } catch (err) {
@@ -169,6 +171,11 @@ export function NFTSelection({
     }
   }, [verifiedNFTs, evmAddress, solanaAddress]);
 
+  // Reset status check completion when verifiedNFTs changes
+  useEffect(() => {
+    setStatusCheckComplete(false);
+  }, [verifiedNFTsKey]);
+
   // Fetch linking status when EVM address or verified NFTs change
   // Only refetch if verifiedNFTs actually changes (not just length, but content)
   useEffect(() => {
@@ -180,22 +187,38 @@ export function NFTSelection({
 
   // Calculate derived values for display (before early returns)
   // Filter out NFTs that are already linked (check both allLinkedNFTs and nfts state)
-  // nfts state contains the linking status from the API (global check)
+  // CRITICAL: Only show NFTs as "available" if we've successfully checked their linking status
   const unlinkedVerifiedNFTs = verifiedNFTs.filter(nft => {
     // Check if linked in allLinkedNFTs (linked to this EVM address)
     const isLinkedInProfile = allLinkedNFTs.some(linked => linked.tokenId === nft.tokenId);
+    if (isLinkedInProfile) return false; // Already linked to this EVM
+    
+    // Only proceed if status check has completed successfully
+    if (!statusCheckComplete || nfts.length === 0) {
+      return false; // Status check not complete - don't show as available
+    }
+    
     // Check if linked globally (from API status check)
     const nftStatus = nfts.find(n => n.tokenId === nft.tokenId);
     const isLinkedGlobally = nftStatus?.isLinked || false;
-    // NFT is available only if NOT linked anywhere
-    return !isLinkedInProfile && !isLinkedGlobally;
+    
+    // NFT is available only if:
+    // 1. NOT linked in profile (this EVM)
+    // 2. NOT linked globally (any EVM)
+    // 3. Status check has completed successfully
+    return !isLinkedGlobally;
   });
 
-  const nftsToShow = verifiedNFTs.length > 0 
-    ? (allLinkedNFTs.length > 0 ? unlinkedVerifiedNFTs : verifiedNFTs)
+  // Only show NFTs if status check has completed successfully
+  const nftsToShow = statusCheckComplete && nfts.length > 0
+    ? unlinkedVerifiedNFTs
     : [];
 
-  const shouldShowAvailableSection = verifiedNFTs.length > 0;
+  // Only show "Available for Linking" section if:
+  // 1. We have verifiedNFTs
+  // 2. Status check has completed successfully
+  // 3. There are actually unlinked NFTs to show
+  const shouldShowAvailableSection = verifiedNFTs.length > 0 && statusCheckComplete && nftsToShow.length > 0;
 
   // Debug log only when verifiedNFTs changes (moved here to be before early returns)
   useEffect(() => {
