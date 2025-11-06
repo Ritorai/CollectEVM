@@ -101,9 +101,9 @@ export function EVMWalletConnector({ onConnected, onDisconnected }: EVMWalletCon
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           Step 1: Connect EVM Wallet
-          {isConnected && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+          {isConnected && <CheckCircle2 className="h-5 w-5 text-[#34C759]" />}
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-[#A0A0A0]">
           Connect your MetaMask or WalletConnect wallet. This will be your profile where all your Wassieverse NFTs from different Solana wallets will be linked.
         </CardDescription>
       </CardHeader>
@@ -119,13 +119,13 @@ export function EVMWalletConnector({ onConnected, onDisconnected }: EVMWalletCon
             </Button>
           ) : (
             <>
-              <div className="bg-green-50 border border-green-200 rounded-md p-4">
-                <p className="text-sm text-green-800 mb-2">
+              <div className="bg-[#1a3a1a] border border-[#34C759]/30 rounded-xl p-4 inner-glow">
+                <p className="text-sm text-[#34C759] mb-2 font-semibold">
                   ✓ EVM wallet connected!
                 </p>
-                <div className="bg-muted rounded-md p-3">
-                  <p className="text-xs text-muted-foreground mb-1">Connected Address:</p>
-                  <p className="text-sm font-mono break-all">{address}</p>
+                <div className="bg-[#0a0a0a] rounded-lg p-3 border border-[#2a2a2a]">
+                  <p className="text-xs text-[#A0A0A0] mb-1">Connected Address:</p>
+                  <p className="text-sm font-mono break-all text-white">{address}</p>
                 </div>
               </div>
 

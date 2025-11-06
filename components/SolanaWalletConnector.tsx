@@ -206,18 +206,18 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           Step 2: Connect Solana Wallet
-          {isVerified && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+          {isVerified && <CheckCircle2 className="h-5 w-5 text-[#34C759]" />}
         </CardTitle>
-        <CardDescription>
-          {disabled
-            ? "Complete Step 1 first - connect your EVM wallet"
-            : "Connect your Phantom wallet to verify Wassieverse NFT ownership"}
-        </CardDescription>
+            <CardDescription className="text-[#A0A0A0]">
+              {disabled
+                ? "Complete Step 1 first - connect your EVM wallet"
+                : "Connect your Phantom wallet to verify Wassieverse NFT ownership"}
+            </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-col gap-3">
           <WalletMultiButton 
-            className="!bg-primary !text-primary-foreground hover:!bg-primary/90 !h-10 !px-4 !rounded-md !text-sm !font-medium"
+            className="!bg-[#8A2BE2] !text-white hover:!bg-[#9B3DF3] hover:!glow-purple !h-10 !px-4 !rounded-xl !text-sm !font-medium !transition-all !duration-200"
             disabled={disabled}
           />
           
@@ -256,8 +256,8 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
           )}
 
           {isVerified && nftCount !== null && (
-            <div className="bg-green-50 border border-green-200 rounded-md p-4">
-              <p className="text-sm text-green-800">
+            <div className="bg-[#1a3a1a] border border-[#34C759]/30 rounded-xl p-4 inner-glow">
+              <p className="text-sm text-[#34C759] font-semibold">
                 ✓ Verified! Found {nftCount} Wassieverse NFT{nftCount !== 1 ? "s" : ""} in this wallet
               </p>
             </div>

@@ -194,18 +194,18 @@ export default function Home() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-gradient-to-b from-[#0a0a0f] via-[#121212] to-[#1a0a1f] dark">
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto space-y-8">
-          {/* Header */}
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Wassieverse NFT Wallet Linker
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Connect your EVM wallet to create your profile, then link Wassieverse NFTs from your Solana wallets.
-            </p>
-          </div>
+              {/* Header */}
+              <div className="text-center space-y-4">
+                <h1 className="text-4xl md:text-5xl font-bold text-white">
+                  Wassieverse NFT Wallet Linker
+                </h1>
+                <p className="text-lg text-[#A0A0A0] max-w-2xl mx-auto">
+                  Connect your EVM wallet to create your profile, then link Wassieverse NFTs from your Solana wallets.
+                </p>
+              </div>
 
           {/* Main Content */}
           <div className="grid gap-6">
@@ -233,17 +233,17 @@ export default function Home() {
             />
           </div>
 
-          {/* Footer Info */}
-          <div className="bg-muted/50 rounded-lg p-6 text-sm text-muted-foreground space-y-2">
-            <h3 className="font-semibold text-foreground">How it works:</h3>
-            <ol className="list-decimal list-inside space-y-1">
-              <li>Connect your EVM wallet (MetaMask, WalletConnect, etc.) - this becomes your profile</li>
-              <li>Connect your Solana wallet (Phantom, etc.) and verify NFT ownership</li>
-              <li>Select and link your Wassieverse NFTs to your EVM profile</li>
-              <li>Add more Solana wallets to link additional NFTs to the same EVM profile</li>
-              <li>All your NFTs from different Solana wallets are aggregated in one place</li>
-            </ol>
-          </div>
+              {/* Footer Info */}
+              <div className="bg-[#202020] rounded-xl p-6 text-sm text-[#A0A0A0] space-y-2 card-depth border border-[#2a2a2a]">
+                <h3 className="font-semibold text-white">How it works:</h3>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Connect your EVM wallet (MetaMask, WalletConnect, etc.) - this becomes your profile</li>
+                  <li>Connect your Solana wallet (Phantom, etc.) and verify NFT ownership</li>
+                  <li>Select and link your Wassieverse NFTs to your EVM profile</li>
+                  <li>Add more Solana wallets to link additional NFTs to the same EVM profile</li>
+                  <li>All your NFTs from different Solana wallets are aggregated in one place</li>
+                </ol>
+              </div>
         </div>
       </div>
     </div>
