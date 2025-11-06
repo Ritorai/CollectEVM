@@ -321,19 +321,21 @@ export function NFTSelection({
               </div>
             )}
 
-            {/* Available for Linking NFTs Section */}
-            {unlinkedVerifiedNFTs.length > 0 && (
+            {/* Available for Linking NFTs Section - Show verifiedNFTs directly if we have them */}
+            {(unlinkedVerifiedNFTs.length > 0 || verifiedNFTs.length > 0) && (
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-muted-foreground">Available for Linking</h3>
                   <div className="flex space-x-2">
-                    <Button 
-                      onClick={handleSelectAllUnlinked}
-                      variant="outline"
-                      size="sm"
-                    >
-                      Select All ({unlinkedVerifiedNFTs.length})
-                    </Button>
+                    {(unlinkedVerifiedNFTs.length > 0 || verifiedNFTs.length > 0) && (
+                      <Button 
+                        onClick={handleSelectAllUnlinked}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Select All ({unlinkedVerifiedNFTs.length > 0 ? unlinkedVerifiedNFTs.length : verifiedNFTs.length})
+                      </Button>
+                    )}
                     {selectedTokenIds.length > 0 && (
                       <Button 
                         onClick={handleClearSelection}
@@ -346,26 +348,30 @@ export function NFTSelection({
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {unlinkedVerifiedNFTs.map((nft) => (
-                    <div key={nft.tokenId} className="border rounded-lg p-4 bg-blue-50 border-blue-200 relative">
-                      <div className="flex items-center space-x-3">
-                        <Checkbox
-                          checked={selectedTokenIds.includes(nft.tokenId)}
-                          onCheckedChange={(checked) => 
-                            handleNFTSelect(nft.tokenId, checked as boolean)
-                          }
-                          className="absolute top-2 right-2"
-                        />
-                        <div className="flex-1 pr-8">
-                          <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
-                          <p className="text-sm text-gray-600">Ready to link</p>
+                  {/* Show unlinked NFTs first, or all verifiedNFTs if no linked check yet */}
+                  {(unlinkedVerifiedNFTs.length > 0 ? unlinkedVerifiedNFTs : verifiedNFTs).map((nft) => {
+                    console.log('🎨 Rendering available NFT:', nft);
+                    return (
+                      <div key={nft.tokenId} className="border rounded-lg p-4 bg-blue-50 border-blue-200 relative">
+                        <div className="flex items-center space-x-3">
+                          <Checkbox
+                            checked={selectedTokenIds.includes(nft.tokenId)}
+                            onCheckedChange={(checked) => 
+                              handleNFTSelect(nft.tokenId, checked as boolean)
+                            }
+                            className="absolute top-2 right-2"
+                          />
+                          <div className="flex-1 pr-8">
+                            <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
+                            <p className="text-sm text-gray-600">Ready to link</p>
+                          </div>
+                          <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                            Available
+                          </Badge>
                         </div>
-                        <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
-                          Available
-                        </Badge>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
