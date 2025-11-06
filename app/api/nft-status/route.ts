@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
-    const { tokenIds } = await req.json();
+    const { tokenIds, evmAddress } = await req.json();
 
     if (!tokenIds || !Array.isArray(tokenIds)) {
       return NextResponse.json(
@@ -12,27 +12,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check which token IDs are already linked
+    // Check which token IDs are already linked (optionally filter by EVM address)
+    const whereClause: any = {
+      tokenId: {
+        in: tokenIds
+      }
+    };
+
+    // If evmAddress is provided, only check NFTs linked to that specific EVM address
+    if (evmAddress) {
+      whereClause.evmAddress = evmAddress.toLowerCase();
+    }
+
     const linkedNFTs = await prisma.linkedNFT.findMany({
-      where: {
-        tokenId: {
-          in: tokenIds
-        }
-      },
+      where: whereClause,
       select: {
         tokenId: true,
-        evmAddress: true
+        evmAddress: true,
+        solanaAddress: true
       }
     });
 
     // Create a map of tokenId -> linking status
-    const statuses: Record<string, { isLinked: boolean; linkedTo?: string }> = {};
+    const statuses: Record<string, { isLinked: boolean; linkedTo?: string; solanaAddress?: string }> = {};
     
     tokenIds.forEach(tokenId => {
       const linkedNFT = linkedNFTs.find(nft => nft.tokenId === tokenId);
       statuses[tokenId] = {
         isLinked: !!linkedNFT,
-        linkedTo: linkedNFT?.evmAddress
+        linkedTo: linkedNFT?.evmAddress,
+        solanaAddress: linkedNFT?.solanaAddress
       };
     });
 

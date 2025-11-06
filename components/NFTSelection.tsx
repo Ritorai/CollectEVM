@@ -14,6 +14,7 @@ interface NFT {
   image?: string;
   isLinked: boolean;
   linkedTo?: string; // EVM address it's linked to
+  linkedFromSolana?: string; // Solana address it was linked from
 }
 
 interface NFTSelectionProps {
@@ -34,53 +35,78 @@ export function NFTSelection({
   isLinking 
 }: NFTSelectionProps) {
   const [nfts, setNfts] = useState<NFT[]>([]);
+  const [allLinkedNFTs, setAllLinkedNFTs] = useState<NFT[]>([]); // All NFTs linked to EVM from any Solana wallet
   const [selectedTokenIds, setSelectedTokenIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchLinkingStatus = useCallback(async () => {
-    if (!verifiedNFTs.length) return;
+    if (!evmAddress) return;
     
     setLoading(true);
     setError(null);
     
     try {
-      // Get the linking status for each NFT
-      const linkingStatusResponse = await fetch('/api/nft-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          tokenIds: verifiedNFTs.map(nft => nft.tokenId)
-        }),
-      });
-
-      let linkingStatuses: Record<string, { isLinked: boolean; linkedTo?: string }> = {};
-      
-      if (linkingStatusResponse.ok) {
-        const statusData = await linkingStatusResponse.json();
-        linkingStatuses = statusData.statuses || {};
+      // First, fetch all NFTs linked to this EVM address from any Solana wallet
+      if (evmAddress) {
+        const profileResponse = await fetch(`/api/evm-profile?evmAddress=${evmAddress}`);
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          if (profileData.success) {
+            // Convert all linked NFTs to NFT format
+            const linkedNFTsList: NFT[] = profileData.data.nfts.map((nft: any) => ({
+              mintAddress: nft.mintAddress,
+              tokenId: nft.tokenId,
+              name: `Wassieverse #${nft.tokenId}`,
+              isLinked: true,
+              linkedTo: evmAddress,
+              linkedFromSolana: nft.solanaAddress
+            }));
+            setAllLinkedNFTs(linkedNFTsList);
+          }
+        }
       }
 
-      // Combine verified NFT data with linking status
-      const nftsWithStatus = verifiedNFTs.map((nft) => ({
-        mintAddress: nft.mintAddress,
-        tokenId: nft.tokenId,
-        name: `Wassieverse #${nft.tokenId}`,
-        isLinked: linkingStatuses[nft.tokenId]?.isLinked || false,
-        linkedTo: linkingStatuses[nft.tokenId]?.linkedTo
-      }));
+      // Then, get the linking status for NFTs in the currently connected Solana wallet
+      if (verifiedNFTs.length > 0) {
+        const linkingStatusResponse = await fetch('/api/nft-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            tokenIds: verifiedNFTs.map(nft => nft.tokenId),
+            evmAddress: evmAddress // Check if linked to this specific EVM address
+          }),
+        });
 
-      setNfts(nftsWithStatus);
+        let linkingStatuses: Record<string, { isLinked: boolean; linkedTo?: string; solanaAddress?: string }> = {};
+        
+        if (linkingStatusResponse.ok) {
+          const statusData = await linkingStatusResponse.json();
+          linkingStatuses = statusData.statuses || {};
+        }
+
+        // Combine verified NFT data with linking status
+        const nftsWithStatus = verifiedNFTs.map((nft) => ({
+          mintAddress: nft.mintAddress,
+          tokenId: nft.tokenId,
+          name: `Wassieverse #${nft.tokenId}`,
+          isLinked: linkingStatuses[nft.tokenId]?.isLinked || false,
+          linkedTo: linkingStatuses[nft.tokenId]?.linkedTo,
+          linkedFromSolana: linkingStatuses[nft.tokenId]?.solanaAddress
+        }));
+
+        setNfts(nftsWithStatus);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load NFT status');
     } finally {
       setLoading(false);
     }
-  }, [verifiedNFTs]);
+  }, [verifiedNFTs, evmAddress]);
 
-  // Fetch linking status when verified NFTs change
+  // Fetch linking status when EVM address or verified NFTs change
   useEffect(() => {
-    if (verifiedNFTs.length > 0) {
+    if (evmAddress) {
       fetchLinkingStatus();
     }
   }, [verifiedNFTs, evmAddress, fetchLinkingStatus]);
@@ -140,7 +166,8 @@ export function NFTSelection({
     );
   }
 
-  if (nfts.length === 0) {
+  // If no NFTs in current wallet but there are linked NFTs, still show them
+  if (nfts.length === 0 && allLinkedNFTs.length === 0) {
     return (
       <Card>
         <CardContent className="p-6">
@@ -152,8 +179,14 @@ export function NFTSelection({
     );
   }
 
+  // NFTs from current Solana wallet
   const unlinkedNFTs = nfts.filter(nft => !nft.isLinked);
-  const linkedNFTs = nfts.filter(nft => nft.isLinked);
+  const linkedNFTsFromCurrent = nfts.filter(nft => nft.isLinked);
+  
+  // All linked NFTs (from any Solana wallet) - filter out duplicates from current wallet
+  const allLinkedNFTsFiltered = allLinkedNFTs.filter(linkedNft => 
+    !nfts.some(currentNft => currentNft.tokenId === linkedNft.tokenId)
+  );
 
   return (
     <div className="space-y-6">
@@ -164,7 +197,7 @@ export function NFTSelection({
             <span>Your Wassieverse NFTs</span>
             <div className="flex space-x-2">
               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                {linkedNFTs.length} Linked
+                {allLinkedNFTs.length} Total Linked
               </Badge>
               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                 {unlinkedNFTs.length} Available
@@ -196,24 +229,44 @@ export function NFTSelection({
         </CardContent>
       </Card>
 
-      {/* Linked NFTs */}
-      {linkedNFTs.length > 0 && (
+      {/* All Linked NFTs (from any Solana wallet) */}
+      {allLinkedNFTs.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Link className="h-5 w-5 text-green-600" />
-              <span>Already Linked</span>
+              <span>Already Linked to Your EVM Profile ({allLinkedNFTs.length})</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {linkedNFTs.map((nft) => (
+              {/* Show NFTs from current wallet that are linked */}
+              {linkedNFTsFromCurrent.map((nft) => (
                 <div key={nft.tokenId} className="border rounded-lg p-4 bg-green-50 border-green-200">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
                       <p className="text-sm text-gray-600">
-                        Linked to: {nft.linkedTo?.slice(0, 6)}...{nft.linkedTo?.slice(-4)}
+                        Already linked from this wallet
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+                      <Link className="h-3 w-3 mr-1" />
+                      Linked
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+              {/* Show NFTs from other wallets that are linked */}
+              {allLinkedNFTsFiltered.map((nft) => (
+                <div key={nft.tokenId} className="border rounded-lg p-4 bg-green-50 border-green-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
+                      <p className="text-sm text-gray-600">
+                        {nft.linkedFromSolana && (
+                          <span>Linked from: {nft.linkedFromSolana.slice(0, 6)}...{nft.linkedFromSolana.slice(-4)}</span>
+                        )}
                       </p>
                     </div>
                     <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">

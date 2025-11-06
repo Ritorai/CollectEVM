@@ -169,11 +169,11 @@ export default function Home() {
     }
   };
 
-  // Show profile if EVM is connected, has wallet links, and we're not adding a wallet
-  // Show Solana connection if EVM is connected but no wallet links yet (or if we're actively adding)
-  // Don't show Solana connection if we're still checking (hasWalletLinks === null)
+  // Show profile if EVM is connected, has wallet links, and we're not adding a wallet or verifying Solana
+  // Show Solana connection if EVM is connected (always allow connecting Solana wallets)
+  // Show NFTSelection when Solana is verified (regardless of existing wallet links)
   const showProfile = isConnected && evmAddress && hasWalletLinks === true && !showAddWallet && !solanaData;
-  const showSolanaConnection = isConnected && evmAddress && hasWalletLinks !== null && (hasWalletLinks === false || showAddWallet || solanaData);
+  const showSolanaConnection = isConnected && evmAddress && hasWalletLinks !== null && !solanaData;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -206,29 +206,27 @@ export default function Home() {
               </Card>
             )}
 
-            {/* Step 2: Solana Wallet Connection (only if EVM is connected and no wallet links yet) */}
+            {/* Step 2: Solana Wallet Connection */}
             {showSolanaConnection && (
-              <>
-                <SolanaWalletConnector
-                  evmAddress={evmAddress}
-                  onVerified={setSolanaData}
-                />
-
-                {/* NFT Selection and Linking */}
-                {solanaData && (
-                  <NFTSelection
-                    solanaAddress={solanaData.solAddress}
-                    evmAddress={evmAddress}
-                    verifiedNFTs={solanaData.nfts || []}
-                    onSelectionChange={setSelectedTokenIds}
-                    onLinkNFTs={handleLinkNFTs}
-                    isLinking={isLinking}
-                  />
-                )}
-              </>
+              <SolanaWalletConnector
+                evmAddress={evmAddress}
+                onVerified={setSolanaData}
+              />
             )}
 
-            {/* EVM Profile View */}
+            {/* NFT Selection and Linking - Show when Solana is verified */}
+            {solanaData && evmAddress && (
+              <NFTSelection
+                solanaAddress={solanaData.solAddress}
+                evmAddress={evmAddress}
+                verifiedNFTs={solanaData.nfts || []}
+                onSelectionChange={setSelectedTokenIds}
+                onLinkNFTs={handleLinkNFTs}
+                isLinking={isLinking}
+              />
+            )}
+
+            {/* EVM Profile View - Show when not verifying/linking */}
             {showProfile && (
               <EVMProfile
                 key={profileKey}
