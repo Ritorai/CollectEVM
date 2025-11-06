@@ -231,33 +231,6 @@ export function NFTSelection({
     );
   }
 
-  // If no NFTs in current wallet and no linked NFTs, show empty state
-  if (nfts.length === 0 && allLinkedNFTs.length === 0 && !solanaAddress) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="text-center text-gray-600 space-y-2">
-            <p className="font-semibold">No NFTs linked yet</p>
-            <p className="text-sm">Connect your Solana wallet to verify and link your Wassieverse NFTs.</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // If no NFTs in current wallet but there are linked NFTs, still show them
-  if (nfts.length === 0 && allLinkedNFTs.length === 0 && solanaAddress) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="text-center text-gray-600">
-            <p>No Wassieverse NFTs found in this wallet.</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   // NFTs from current Solana wallet
   const unlinkedNFTs = nfts.filter(nft => !nft.isLinked);
   const linkedNFTsFromCurrent = nfts.filter(nft => nft.isLinked);
