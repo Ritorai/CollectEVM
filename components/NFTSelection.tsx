@@ -317,8 +317,8 @@ export function NFTSelection({
         </CardContent>
       </Card>
 
-      {/* Available NFTs for Linking - Show if we have verified NFTs but they're not in nfts yet, or if we have unlinked NFTs */}
-      {(unlinkedNFTs.length > 0 || (verifiedNFTs.length > 0 && nfts.length === 0 && !loading)) && (
+      {/* Available NFTs for Linking - ALWAYS show if verifiedNFTs has items */}
+      {verifiedNFTs.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -327,9 +327,15 @@ export function NFTSelection({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {unlinkedNFTs.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {unlinkedNFTs.map((nft) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {verifiedNFTs.map((nft) => {
+                // Check if this NFT is already linked
+                const isLinked = nfts.find(n => n.tokenId === nft.tokenId)?.isLinked || false;
+                
+                // Only show if not linked
+                if (isLinked) return null;
+                
+                return (
                   <div key={nft.tokenId} className="border rounded-lg p-4 bg-blue-50 border-blue-200">
                     <div className="flex items-center space-x-3">
                       <Checkbox
@@ -347,35 +353,9 @@ export function NFTSelection({
                       </Badge>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : verifiedNFTs.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {verifiedNFTs.map((nft) => (
-                  <div key={nft.tokenId} className="border rounded-lg p-4 bg-blue-50 border-blue-200">
-                    <div className="flex items-center space-x-3">
-                      <Checkbox
-                        checked={selectedTokenIds.includes(nft.tokenId)}
-                        onCheckedChange={(checked) => 
-                          handleNFTSelect(nft.tokenId, checked as boolean)
-                        }
-                      />
-                      <div className="flex-1">
-                        <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
-                        <p className="text-sm text-gray-600">Ready to link</p>
-                      </div>
-                      <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
-                        Available
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No NFTs available for linking
-              </p>
-            )}
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       )}
