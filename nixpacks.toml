@@ -6,8 +6,7 @@ cmds = ["chmod +x scripts/install-deps.sh && ./scripts/install-deps.sh"]
 
 [phases.build]
 cmds = [
-  "npm run build",
-  "npx prisma db push --accept-data-loss || echo 'Database already set up'"
+  "npm run build"
 ]
 
 [start]
