@@ -43,6 +43,18 @@ if [ $PRISMA_EXIT_CODE -eq 0 ]; then
   echo ""
   echo "✅ Database schema pushed successfully!"
   echo "   Tables should now exist in your PostgreSQL database"
+  
+  # Create the WalletSummary view
+  echo ""
+  echo "📊 Creating WalletSummary view..."
+  if [ -f "prisma/migrations/create_wallet_summary_view.sql" ]; then
+    npx prisma db execute --stdin < prisma/migrations/create_wallet_summary_view.sql 2>&1 || {
+      echo "⚠️  View creation failed (might already exist), continuing..."
+    }
+    echo "✅ WalletSummary view created/updated"
+  else
+    echo "⚠️  View SQL file not found, skipping view creation"
+  fi
 else
   echo ""
   echo "❌ Database setup failed with exit code: $PRISMA_EXIT_CODE"
