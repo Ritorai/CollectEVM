@@ -31,12 +31,26 @@ export default function Home() {
   const evmAddress = lockedEvmAddress || evmAddressFromWagmi || null;
 
   // Update locked address when wallet connects (but don't clear if it disconnects)
+  // CRITICAL: Only update locked address if:
+  // 1. No address is locked yet (first connection)
+  // 2. The new address matches the locked address (reconnection of same wallet)
+  // 3. Never change locked address to a different address unless user explicitly connects
   React.useEffect(() => {
     if (evmAddressFromWagmi && isEVMConnectedFromWagmi) {
-      // Wallet connected - lock the address
-      if (lockedEvmAddress !== evmAddressFromWagmi) {
-        console.log('🔒 Locking EVM address:', evmAddressFromWagmi);
+      if (!lockedEvmAddress) {
+        // No address locked yet - lock the new one
+        console.log('🔒 Locking EVM address (first connection):', evmAddressFromWagmi);
         setLockedEvmAddress(evmAddressFromWagmi);
+      } else if (lockedEvmAddress.toLowerCase() === evmAddressFromWagmi.toLowerCase()) {
+        // Same address reconnected - that's fine, keep it locked
+        console.log('🔒 EVM address reconnected (same address):', evmAddressFromWagmi);
+      } else {
+        // Different address connected - don't change the locked address!
+        // This prevents switching Solana wallets from changing the EVM address
+        console.log('⚠️ Different EVM address detected, but keeping locked address:', {
+          locked: lockedEvmAddress,
+          new: evmAddressFromWagmi
+        });
       }
     }
     // Don't clear lockedEvmAddress when wallet disconnects - keep it locked until user clicks disconnect
@@ -94,6 +108,16 @@ export default function Home() {
   const handleLinkNFTs = async (selectedTokenIds: string[]) => {
     if (!solanaData || !evmAddress || selectedTokenIds.length === 0) return;
 
+    // Check if EVM wallet is actually connected (not just locked)
+    if (!isEVMConnectedFromWagmi || evmAddressFromWagmi?.toLowerCase() !== evmAddress.toLowerCase()) {
+      toast({
+        title: "EVM wallet not connected",
+        description: "Please reconnect your EVM wallet to sign the linking transaction. The wallet may have been disconnected.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLinking(true);
     try {
       // Step 1: Get a new nonce for EVM linking
@@ -115,10 +139,11 @@ export default function Home() {
       let evmSignature: string;
       try {
         evmSignature = await signMessageAsync({ message });
-      } catch {
+      } catch (err) {
+        console.error("Signature error:", err);
         toast({
           title: "Signature cancelled",
-          description: "You need to sign the message to link your wallets",
+          description: "You need to sign the message to link your wallets. Please make sure your EVM wallet is connected and try again.",
           variant: "destructive",
         });
         setIsLinking(false);

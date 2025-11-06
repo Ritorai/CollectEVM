@@ -31,10 +31,23 @@ export function EVMWalletConnector({ onConnected, onDisconnected }: EVMWalletCon
 
   React.useEffect(() => {
     if (wagmiAddress && wagmiIsConnected) {
-      setLockedAddress(wagmiAddress);
+      if (!lockedAddress) {
+        // No address locked yet - lock the new one
+        setLockedAddress(wagmiAddress);
+      } else if (lockedAddress.toLowerCase() === wagmiAddress.toLowerCase()) {
+        // Same address reconnected - that's fine, keep it locked
+        // (no need to update, already locked)
+      } else {
+        // Different address connected - don't change the locked address!
+        // This prevents switching Solana wallets from changing the EVM address
+        console.log('⚠️ Different EVM address detected in component, but keeping locked address:', {
+          locked: lockedAddress,
+          new: wagmiAddress
+        });
+      }
     }
     // Don't clear lockedAddress when wagmi disconnects - keep it locked until user clicks disconnect
-  }, [wagmiAddress, wagmiIsConnected]);
+  }, [wagmiAddress, wagmiIsConnected, lockedAddress]);
 
   const handleConnect = () => {
     const injectedConnector = connectors.find((c) => c.id === "injected");
@@ -61,10 +74,19 @@ export function EVMWalletConnector({ onConnected, onDisconnected }: EVMWalletCon
     }
     prevIsConnectedRef.current = wagmiIsConnected;
 
+    // Only notify parent if:
+    // 1. Address actually changed (not just reconnected)
+    // 2. The new address matches the locked address (or no address is locked)
     if (wagmiAddress && wagmiIsConnected && wagmiAddress !== prevAddressRef.current) {
-      prevAddressRef.current = wagmiAddress;
-      wasManuallyDisconnectedRef.current = false;
-      onConnected(wagmiAddress);
+      // Check if this is the same as locked address (or no address locked)
+      if (!lockedAddress || lockedAddress.toLowerCase() === wagmiAddress.toLowerCase()) {
+        prevAddressRef.current = wagmiAddress;
+        wasManuallyDisconnectedRef.current = false;
+        onConnected(wagmiAddress);
+      } else {
+        // Different address - don't notify parent, keep using locked address
+        console.log('⚠️ Different EVM address connected, but keeping locked address - not notifying parent');
+      }
     } else if (!wagmiIsConnected && prevAddressRef.current && !lockedAddress) {
       // Wallet disconnected and not locked - only reset if it wasn't manual
       if (!wasManuallyDisconnectedRef.current) {
