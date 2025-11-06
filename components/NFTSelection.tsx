@@ -285,35 +285,96 @@ export function NFTSelection({
               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                 {allLinkedNFTs.length} Linked
               </Badge>
-              {solanaAddress && (
+              {verifiedNFTs.length > 0 && (
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                  {unlinkedNFTs.length} Available
+                  {verifiedNFTs.length} Available
                 </Badge>
               )}
             </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex space-x-2">
-            {unlinkedNFTs.length > 0 && (
-              <Button 
-                onClick={handleSelectAllUnlinked}
-                variant="outline"
-                size="sm"
-              >
-                Select All Unlinked ({unlinkedNFTs.length})
-              </Button>
-            )}
-            {selectedTokenIds.length > 0 && (
-              <Button 
-                onClick={handleClearSelection}
-                variant="outline"
-                size="sm"
-              >
-                Clear Selection
-              </Button>
-            )}
-          </div>
+          {/* Show verified NFTs directly in this section */}
+          {verifiedNFTs.length > 0 ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {verifiedNFTs.map((nft) => {
+                  const isLinked = nfts.find(n => n.tokenId === nft.tokenId)?.isLinked || false;
+                  if (isLinked) return null;
+                  
+                  return (
+                    <div key={nft.tokenId} className="border rounded-lg p-4 bg-blue-50 border-blue-200">
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={selectedTokenIds.includes(nft.tokenId)}
+                          onCheckedChange={(checked) => 
+                            handleNFTSelect(nft.tokenId, checked as boolean)
+                          }
+                        />
+                        <div className="flex-1">
+                          <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
+                          <p className="text-sm text-gray-600">Ready to link</p>
+                        </div>
+                        <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                          Available
+                        </Badge>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex space-x-2">
+                {verifiedNFTs.length > 0 && (
+                  <Button 
+                    onClick={() => {
+                      const unlinkedIds = verifiedNFTs
+                        .filter(nft => !nfts.find(n => n.tokenId === nft.tokenId)?.isLinked)
+                        .map(nft => nft.tokenId);
+                      unlinkedIds.forEach(id => {
+                        if (!selectedTokenIds.includes(id)) {
+                          handleNFTSelect(id, true);
+                        }
+                      });
+                    }}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Select All Available ({verifiedNFTs.filter(nft => !nfts.find(n => n.tokenId === nft.tokenId)?.isLinked).length})
+                  </Button>
+                )}
+                {selectedTokenIds.length > 0 && (
+                  <Button 
+                    onClick={handleClearSelection}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Clear Selection
+                  </Button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex space-x-2">
+              {unlinkedNFTs.length > 0 && (
+                <Button 
+                  onClick={handleSelectAllUnlinked}
+                  variant="outline"
+                  size="sm"
+                >
+                  Select All Unlinked ({unlinkedNFTs.length})
+                </Button>
+              )}
+              {selectedTokenIds.length > 0 && (
+                <Button 
+                  onClick={handleClearSelection}
+                  variant="outline"
+                  size="sm"
+                >
+                  Clear Selection
+                </Button>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
