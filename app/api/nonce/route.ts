@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { randomBytes } from "crypto";
+import { setCache } from "@/lib/redis";
 
 export async function POST(req: NextRequest) {
   try {
@@ -36,6 +37,9 @@ export async function POST(req: NextRequest) {
         expiresAt,
       },
     });
+
+    // Cache nonce in Redis for faster lookups (5 minutes = 300 seconds)
+    await setCache(`nonce:${nonce}`, JSON.stringify({ address, expiresAt: expiresAt.toISOString() }), 300);
 
     return NextResponse.json({ nonce });
   } catch (error) {

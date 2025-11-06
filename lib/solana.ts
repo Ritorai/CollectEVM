@@ -1,5 +1,6 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import * as mpl from "@metaplex-foundation/mpl-token-metadata";
+import { getCache, setCache } from "./redis";
 
 /**
  * IMPORTANT: This is the Collection NFT address (the parent NFT of the collection).

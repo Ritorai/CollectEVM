@@ -4,6 +4,7 @@ import { PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
 import nacl from "tweetnacl";
 import { getWassieverseNFTs } from "@/lib/solana";
+import { getCache, setCache } from "@/lib/redis";
 
 export async function POST(req: NextRequest) {
   try {
@@ -81,10 +82,25 @@ export async function POST(req: NextRequest) {
       data: { used: true },
     });
 
-    // 4. Query Solana blockchain for Wassieverse NFTs
+    // 4. Query Solana blockchain for Wassieverse NFTs (with Redis caching)
     let nfts: { mintAddress: string; tokenId: string }[] = [];
     try {
-      nfts = await getWassieverseNFTs(solAddress);
+      // Check Redis cache first (cache for 5 minutes = 300 seconds)
+      const cacheKey = `nfts:${solAddress}`;
+      const cachedNFTs = await getCache(cacheKey);
+      
+      if (cachedNFTs) {
+        console.log(`✅ Using cached NFTs for ${solAddress}`);
+        nfts = JSON.parse(cachedNFTs);
+      } else {
+        console.log(`🔍 Fetching NFTs from blockchain for ${solAddress}`);
+        nfts = await getWassieverseNFTs(solAddress);
+        
+        // Cache the result for 5 minutes
+        if (nfts.length > 0) {
+          await setCache(cacheKey, JSON.stringify(nfts), 300);
+        }
+      }
       
       if (nfts.length === 0) {
         return NextResponse.json(
