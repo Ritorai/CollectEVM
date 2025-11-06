@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import React from "react";
+import Image from "next/image";
 import { SolanaWalletConnector } from "@/components/SolanaWalletConnector";
 import { EVMWalletConnector } from "@/components/EVMWalletConnector";
 import { NFTSelection } from "@/components/NFTSelection";
@@ -199,9 +200,16 @@ export default function Home() {
         <div className="max-w-4xl mx-auto space-y-8">
               {/* Header */}
               <div className="text-center space-y-4">
-                <h1 className="text-4xl md:text-5xl font-bold text-white">
-                  Wassieverse NFT Wallet Linker
-                </h1>
+                <div className="flex justify-center">
+                  <Image
+                    src="/logo.png"
+                    alt="Wassieverse NFT Wallet Linker"
+                    width={400}
+                    height={100}
+                    className="h-auto w-auto max-w-full"
+                    priority
+                  />
+                </div>
                 <p className="text-lg text-[#A0A0A0] max-w-2xl mx-auto">
                   Connect your EVM wallet to create your profile, then link Wassieverse NFTs from your Solana wallets.
                 </p>
