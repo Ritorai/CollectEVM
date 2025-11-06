@@ -36,7 +36,8 @@ export default function Home() {
       solAddress: solanaData?.solAddress,
       nftCount: solanaData?.nfts?.length,
       nfts: solanaData?.nfts,
-      nftsString: JSON.stringify(solanaData?.nfts)
+      nftsString: JSON.stringify(solanaData?.nfts),
+      fullSolanaData: JSON.stringify(solanaData)
     });
   }, [solanaData]);
 

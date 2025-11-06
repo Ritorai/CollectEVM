@@ -106,18 +106,32 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
         setIsVerified(true);
         setNftCount(verifyData.tokenIds.length);
         
+        // Ensure nfts array is present
+        const nftsArray = verifyData.nfts || [];
+        
+        console.log('✅ SolanaWalletConnector: Verification response:', {
+          verified: verifyData.verified,
+          tokenIds: verifyData.tokenIds,
+          tokenIdsLength: verifyData.tokenIds?.length,
+          nfts: verifyData.nfts,
+          nftsLength: verifyData.nfts?.length,
+          nftsArray: nftsArray,
+          nftsArrayLength: nftsArray.length,
+          fullResponse: JSON.stringify(verifyData)
+        });
+        
         const verifiedData = {
           solAddress,
           tokenIds: verifyData.tokenIds,
           signature: signatureBase58,
-          nfts: verifyData.nfts || [],
+          nfts: nftsArray,
         };
         
-        console.log('✅ SolanaWalletConnector: Calling onVerified with:', verifiedData);
-        console.log('📦 NFT data:', {
-          nftsArray: verifyData.nfts,
-          nftsLength: verifyData.nfts?.length,
-          nftsString: JSON.stringify(verifyData.nfts)
+        console.log('📤 SolanaWalletConnector: Calling onVerified with:', verifiedData);
+        console.log('📦 Final NFT data being passed:', {
+          nfts: verifiedData.nfts,
+          nftsLength: verifiedData.nfts.length,
+          nftsString: JSON.stringify(verifiedData.nfts)
         });
         
         toast({
