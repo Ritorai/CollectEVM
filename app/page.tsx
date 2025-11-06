@@ -108,19 +108,9 @@ export default function Home() {
   const handleLinkNFTs = async (selectedTokenIds: string[]) => {
     if (!solanaData || !evmAddress || selectedTokenIds.length === 0) return;
 
-    // Check if EVM wallet is actually connected (not just locked)
-    if (!isEVMConnectedFromWagmi || evmAddressFromWagmi?.toLowerCase() !== evmAddress.toLowerCase()) {
-      toast({
-        title: "EVM wallet not connected",
-        description: "Please reconnect your EVM wallet to sign the linking transaction. The wallet may have been disconnected.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLinking(true);
     try {
-      // Step 1: Get a new nonce for EVM linking
+      // Step 1: Get a new nonce for Solana linking
       const nonceResponse = await fetch("/api/nonce", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -133,21 +123,30 @@ export default function Home() {
 
       const { nonce } = await nonceResponse.json();
 
-      // Step 2: Create message and sign with EVM wallet
-      const message = `I confirm linking my EVM wallet ${evmAddress} to my Solana wallet ${solanaData.solAddress} | nonce: ${nonce}`;
+      // Step 2: Check if EVM wallet is actually connected (for signature)
+      // If not connected but locked, we'll skip EVM signature
+      const isEvmActuallyConnected = isEVMConnectedFromWagmi && evmAddressFromWagmi?.toLowerCase() === evmAddress.toLowerCase();
+      let evmSignature: string | undefined;
+      let message: string | undefined;
 
-      let evmSignature: string;
-      try {
-        evmSignature = await signMessageAsync({ message });
-      } catch (err) {
-        console.error("Signature error:", err);
-        toast({
-          title: "Signature cancelled",
-          description: "You need to sign the message to link your wallets. Please make sure your EVM wallet is connected and try again.",
-          variant: "destructive",
-        });
-        setIsLinking(false);
-        return;
+      if (isEvmActuallyConnected) {
+        // EVM wallet is connected - get signature
+        message = `I confirm linking my EVM wallet ${evmAddress} to my Solana wallet ${solanaData.solAddress} | nonce: ${nonce}`;
+        try {
+          evmSignature = await signMessageAsync({ message });
+        } catch (err) {
+          console.error("Signature error:", err);
+          toast({
+            title: "Signature cancelled",
+            description: "You need to sign the message to link your wallets. Please make sure your EVM wallet is connected and try again.",
+            variant: "destructive",
+          });
+          setIsLinking(false);
+          return;
+        }
+      } else {
+        // EVM wallet is locked but not connected - skip signature
+        console.log('⏭️ EVM wallet is locked but not connected - skipping EVM signature');
       }
 
       // Step 3: Send to backend for verification and linking - pass selected tokenIds
@@ -157,11 +156,12 @@ export default function Home() {
         body: JSON.stringify({
           solanaAddress: solanaData.solAddress,
           evmAddress,
-          evmSignature,
-          message,
+          evmSignature: evmSignature, // May be undefined if wallet not connected
+          message: message, // May be undefined if wallet not connected
           nonce,
           solanaSignature: solanaData.signature,
           selectedTokenIds: selectedTokenIds, // Pass only selected tokenIds
+          skipEvmSignature: !isEvmActuallyConnected, // Flag to skip EVM signature
         }),
       });
 
