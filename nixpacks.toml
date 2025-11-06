@@ -2,7 +2,7 @@
 nixPkgs = ["nodejs_20", "npm-10_x", "openssl", "python3"]
 
 [phases.install]
-cmds = ["npm ci || (npm ci --ignore-scripts && echo 'Continuing with ignored scripts')"]
+cmds = ["chmod +x scripts/install-deps.sh && ./scripts/install-deps.sh"]
 
 [phases.build]
 cmds = ["npm run build"]
