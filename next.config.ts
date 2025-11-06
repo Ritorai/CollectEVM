@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
     config.externals.push({
       '@react-native-async-storage/async-storage': 'commonjs @react-native-async-storage/async-storage',
     });
+    
+    // Ignore usb package (hardware wallet support) - not needed for web app
+    if (isServer) {
+      config.externals.push('usb');
+    }
     
     return config;
   },
