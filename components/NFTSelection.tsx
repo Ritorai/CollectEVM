@@ -18,9 +18,9 @@ interface NFT {
 }
 
 interface NFTSelectionProps {
-  solanaAddress: string;
+  solanaAddress?: string | null;
   evmAddress?: string | null;
-  verifiedNFTs: { mintAddress: string; tokenId: string }[];
+  verifiedNFTs?: { mintAddress: string; tokenId: string }[];
   onSelectionChange: (selectedTokenIds: string[]) => void;
   onLinkNFTs: (selectedTokenIds: string[]) => Promise<void>;
   isLinking: boolean;
@@ -67,8 +67,8 @@ export function NFTSelection({
         }
       }
 
-      // Then, get the linking status for NFTs in the currently connected Solana wallet
-      if (verifiedNFTs.length > 0) {
+      // Then, get the linking status for NFTs in the currently connected Solana wallet (if any)
+      if (verifiedNFTs && verifiedNFTs.length > 0) {
         const linkingStatusResponse = await fetch('/api/nft-status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -96,6 +96,9 @@ export function NFTSelection({
         }));
 
         setNfts(nftsWithStatus);
+      } else {
+        // No verified NFTs from current Solana wallet
+        setNfts([]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load NFT status');
@@ -109,7 +112,7 @@ export function NFTSelection({
     if (evmAddress) {
       fetchLinkingStatus();
     }
-  }, [verifiedNFTs, evmAddress, fetchLinkingStatus]);
+  }, [evmAddress, verifiedNFTs, fetchLinkingStatus]);
 
   const handleNFTSelect = (tokenId: string, checked: boolean) => {
     const newSelection = checked 
@@ -166,8 +169,22 @@ export function NFTSelection({
     );
   }
 
+  // If no NFTs in current wallet and no linked NFTs, show empty state
+  if (nfts.length === 0 && allLinkedNFTs.length === 0 && !solanaAddress) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center text-gray-600 space-y-2">
+            <p className="font-semibold">No NFTs linked yet</p>
+            <p className="text-sm">Connect your Solana wallet to verify and link your Wassieverse NFTs.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   // If no NFTs in current wallet but there are linked NFTs, still show them
-  if (nfts.length === 0 && allLinkedNFTs.length === 0) {
+  if (nfts.length === 0 && allLinkedNFTs.length === 0 && solanaAddress) {
     return (
       <Card>
         <CardContent className="p-6">
@@ -197,11 +214,13 @@ export function NFTSelection({
             <span>Your Wassieverse NFTs</span>
             <div className="flex space-x-2">
               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                {allLinkedNFTs.length} Total Linked
+                {allLinkedNFTs.length} Linked
               </Badge>
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                {unlinkedNFTs.length} Available
-              </Badge>
+              {solanaAddress && (
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                  {unlinkedNFTs.length} Available
+                </Badge>
+              )}
             </div>
           </CardTitle>
         </CardHeader>
@@ -230,15 +249,15 @@ export function NFTSelection({
       </Card>
 
       {/* All Linked NFTs (from any Solana wallet) */}
-      {allLinkedNFTs.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Link className="h-5 w-5 text-green-600" />
-              <span>Already Linked to Your EVM Profile ({allLinkedNFTs.length})</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Link className="h-5 w-5 text-green-600" />
+            <span>Already Linked to Your EVM Profile ({allLinkedNFTs.length})</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {allLinkedNFTs.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Show NFTs from current wallet that are linked */}
               {linkedNFTsFromCurrent.map((nft) => (
@@ -277,9 +296,13 @@ export function NFTSelection({
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="text-center text-gray-600 py-4">
+              <p>No NFTs linked yet. Connect your Solana wallet to link your first NFTs.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Available NFTs for Linking */}
       {unlinkedNFTs.length > 0 && (
@@ -317,7 +340,7 @@ export function NFTSelection({
       )}
 
       {/* Link Selected NFTs */}
-      {selectedTokenIds.length > 0 && evmAddress && (
+      {selectedTokenIds.length > 0 && evmAddress && solanaAddress && (
         <Card>
           <CardContent className="p-6">
             <div className="text-center space-y-4">

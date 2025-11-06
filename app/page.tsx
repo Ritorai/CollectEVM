@@ -214,24 +214,15 @@ export default function Home() {
               />
             )}
 
-            {/* NFT Selection and Linking - Show when Solana is verified */}
-            {solanaData && evmAddress && (
+            {/* NFT Selection - Always show when EVM is connected */}
+            {isConnected && evmAddress && hasWalletLinks !== null && (
               <NFTSelection
-                solanaAddress={solanaData.solAddress}
+                solanaAddress={solanaData?.solAddress || null}
                 evmAddress={evmAddress}
-                verifiedNFTs={solanaData.nfts || []}
+                verifiedNFTs={solanaData?.nfts || []}
                 onSelectionChange={setSelectedTokenIds}
                 onLinkNFTs={handleLinkNFTs}
                 isLinking={isLinking}
-              />
-            )}
-
-            {/* EVM Profile View - Show when not verifying/linking */}
-            {showProfile && (
-              <EVMProfile
-                key={profileKey}
-                evmAddress={evmAddress}
-                onAddAnotherWallet={handleAddAnotherWallet}
               />
             )}
           </div>
