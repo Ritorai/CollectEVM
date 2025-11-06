@@ -23,5 +23,9 @@ npm ci --ignore-scripts || {
 echo "Running postinstall scripts..."
 npm run postinstall || echo "⚠️  Postinstall failed, continuing..."
 
+# Push database schema (create tables if they don't exist)
+echo "Setting up database schema..."
+npx prisma db push --accept-data-loss || echo "⚠️  Database setup failed, continuing..."
+
 echo "✅ Dependencies installed (some scripts may have been skipped)"
 

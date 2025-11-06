@@ -44,8 +44,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ nonce });
   } catch (error) {
     console.error("Error generating nonce:", error);
+    // Log more details for debugging
+    if (error instanceof Error) {
+      console.error("Error details:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      });
+    }
     return NextResponse.json(
-      { error: "Failed to generate nonce" },
+      { 
+        error: "Failed to generate nonce",
+        details: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : String(error)) : undefined
+      },
       { status: 500 }
     );
   }
