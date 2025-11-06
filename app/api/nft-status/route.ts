@@ -12,23 +12,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check which token IDs are already linked (optionally filter by EVM address)
-    const whereClause: {
-      tokenId: { in: string[] };
-      evmAddress?: string;
-    } = {
-      tokenId: {
-        in: tokenIds
-      }
-    };
-
-    // If evmAddress is provided, only check NFTs linked to that specific EVM address
-    if (evmAddress) {
-      whereClause.evmAddress = evmAddress.toLowerCase();
-    }
-
+    // CRITICAL: Check globally if tokenIds are linked (tokenId has global uniqueness constraint)
+    // A tokenId can only be linked once globally, regardless of which EVM address
     const linkedNFTs = await prisma.linkedNFT.findMany({
-      where: whereClause,
+      where: {
+        tokenId: {
+          in: tokenIds
+        }
+      },
       select: {
         tokenId: true,
         evmAddress: true,
@@ -41,6 +32,7 @@ export async function POST(req: NextRequest) {
     
     tokenIds.forEach(tokenId => {
       const linkedNFT = linkedNFTs.find(nft => nft.tokenId === tokenId);
+      // If linked globally, mark as linked (regardless of which EVM address it's linked to)
       statuses[tokenId] = {
         isLinked: !!linkedNFT,
         linkedTo: linkedNFT?.evmAddress,

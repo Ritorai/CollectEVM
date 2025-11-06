@@ -179,9 +179,16 @@ export function NFTSelection({
   }, [evmAddress, verifiedNFTsKey, fetchLinkingStatus]);
 
   // Calculate derived values for display (before early returns)
+  // Filter out NFTs that are already linked (check both allLinkedNFTs and nfts state)
+  // nfts state contains the linking status from the API (global check)
   const unlinkedVerifiedNFTs = verifiedNFTs.filter(nft => {
-    const isLinked = allLinkedNFTs.some(linked => linked.tokenId === nft.tokenId);
-    return !isLinked;
+    // Check if linked in allLinkedNFTs (linked to this EVM address)
+    const isLinkedInProfile = allLinkedNFTs.some(linked => linked.tokenId === nft.tokenId);
+    // Check if linked globally (from API status check)
+    const nftStatus = nfts.find(n => n.tokenId === nft.tokenId);
+    const isLinkedGlobally = nftStatus?.isLinked || false;
+    // NFT is available only if NOT linked anywhere
+    return !isLinkedInProfile && !isLinkedGlobally;
   });
 
   const nftsToShow = verifiedNFTs.length > 0 
