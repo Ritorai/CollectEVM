@@ -28,12 +28,30 @@ export function EVMWalletConnector({ onConnected }: EVMWalletConnectorProps) {
     }
   };
 
+  // Track if wallet was manually disconnected (to prevent auto-reconnect issues)
+  const wasManuallyDisconnectedRef = React.useRef<boolean>(false);
+  const prevIsConnectedRef = React.useRef<boolean>(false);
+
   // Notify parent when wallet connects - only when it actually changes
   const prevAddressRef = React.useRef<string | undefined>(undefined);
   React.useEffect(() => {
+    // Track connection state changes
+    if (prevIsConnectedRef.current && !isConnected) {
+      // Wallet was disconnected - check if it was manual
+      console.log('🔄 EVM wallet disconnected');
+    }
+    prevIsConnectedRef.current = isConnected;
+
     if (isConnected && address && address !== prevAddressRef.current) {
       prevAddressRef.current = address;
+      wasManuallyDisconnectedRef.current = false;
       onConnected(address);
+    } else if (!isConnected && prevAddressRef.current) {
+      // Wallet disconnected - only reset if it wasn't manual
+      if (!wasManuallyDisconnectedRef.current) {
+        console.log('⚠️ EVM wallet disconnected unexpectedly - this should not happen when switching Solana wallets');
+      }
+      prevAddressRef.current = undefined;
     }
   }, [isConnected, address, onConnected]);
 
@@ -71,7 +89,10 @@ export function EVMWalletConnector({ onConnected }: EVMWalletConnectorProps) {
               </div>
 
               <Button
-                onClick={() => disconnect()}
+                onClick={() => {
+                  wasManuallyDisconnectedRef.current = true;
+                  disconnect();
+                }}
                 variant="outline"
                 className="w-full"
               >
