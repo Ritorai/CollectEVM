@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import React from "react";
 import { SolanaWalletConnector } from "@/components/SolanaWalletConnector";
 import { EVMWalletConnector } from "@/components/EVMWalletConnector";
 import { NFTSelection } from "@/components/NFTSelection";
 import { EVMProfile } from "@/components/EVMProfile";
+import { Card, CardContent } from "@/components/ui/card";
 import { useAccount, useSignMessage } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 
@@ -91,11 +93,12 @@ export default function Home() {
         description: `Your ${linkData.data.tokenIds.length} Wassieverse NFT(s) are now linked to your EVM wallet`,
       });
 
-      // Reset Solana data and show profile
+      // Reset Solana data and refresh profile status
       setSolanaData(null);
       setSelectedTokenIds([]);
       setShowAddWallet(false);
       setProfileKey((prev) => prev + 1); // Refresh profile
+      await checkProfileStatus(); // Update hasWalletLinks
     } catch (error: any) {
       console.error("Linking error:", error);
       toast({
@@ -108,14 +111,69 @@ export default function Home() {
     }
   };
 
+  const [hasWalletLinks, setHasWalletLinks] = useState<boolean | null>(null);
+
   const handleAddAnotherWallet = () => {
     setShowAddWallet(true);
     setSolanaData(null);
     setSelectedTokenIds([]);
   };
 
-  // Show profile if EVM is connected and we're not in the process of adding a wallet
-  const showProfile = isConnected && evmAddress && !showAddWallet && !solanaData;
+  // Check profile status when EVM wallet connects
+  React.useEffect(() => {
+    const checkProfileStatus = async () => {
+      if (!evmAddress) return;
+      try {
+        const response = await fetch(`/api/evm-profile?evmAddress=${evmAddress}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            setHasWalletLinks(result.data.solanaWallets.length > 0);
+          } else {
+            setHasWalletLinks(false);
+          }
+        } else {
+          setHasWalletLinks(false);
+        }
+      } catch (error) {
+        console.error("Error checking profile:", error);
+        setHasWalletLinks(false);
+      }
+    };
+
+    if (isConnected && evmAddress) {
+      checkProfileStatus();
+    } else {
+      setHasWalletLinks(null);
+    }
+  }, [isConnected, evmAddress]);
+
+  // Check if profile has wallet links (for use after linking)
+  const checkProfileStatus = async () => {
+    if (!evmAddress) return;
+    try {
+      const response = await fetch(`/api/evm-profile?evmAddress=${evmAddress}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setHasWalletLinks(result.data.solanaWallets.length > 0);
+        } else {
+          setHasWalletLinks(false);
+        }
+      } else {
+        setHasWalletLinks(false);
+      }
+    } catch (error) {
+      console.error("Error checking profile:", error);
+      setHasWalletLinks(false);
+    }
+  };
+
+  // Show profile if EVM is connected, has wallet links, and we're not adding a wallet
+  // Show Solana connection if EVM is connected but no wallet links yet (or if we're actively adding)
+  // Don't show Solana connection if we're still checking (hasWalletLinks === null)
+  const showProfile = isConnected && evmAddress && hasWalletLinks === true && !showAddWallet && !solanaData;
+  const showSolanaConnection = isConnected && evmAddress && hasWalletLinks !== null && (hasWalletLinks === false || showAddWallet || solanaData);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -136,8 +194,20 @@ export default function Home() {
             {/* Step 1: EVM Wallet Connection */}
             <EVMWalletConnector onConnected={handleEVMConnected} />
 
-            {/* Step 2: Solana Wallet Connection (only if EVM is connected) */}
-            {isConnected && evmAddress && (showAddWallet || !showProfile) && (
+            {/* Loading state while checking profile */}
+            {isConnected && evmAddress && hasWalletLinks === null && (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <span>Checking your profile...</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Step 2: Solana Wallet Connection (only if EVM is connected and no wallet links yet) */}
+            {showSolanaConnection && (
               <>
                 <SolanaWalletConnector
                   evmAddress={evmAddress}

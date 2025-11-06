@@ -237,10 +237,18 @@ export function EVMProfile({ evmAddress, onAddAnotherWallet }: EVMProfileProps) 
 
       {profileData.nftsByWallet.length === 0 && (
         <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-muted-foreground mb-4">
-              No NFTs linked yet. Connect a Solana wallet to get started!
-            </p>
+          <CardContent className="p-6 text-center space-y-4">
+            <div className="space-y-2">
+              <p className="text-lg font-semibold text-foreground">
+                No NFTs linked yet
+              </p>
+              <p className="text-muted-foreground">
+                Connect your first Solana wallet and verify your Wassieverse NFTs to get started!
+              </p>
+            </div>
+            <Button onClick={onAddAnotherWallet} className="mt-4">
+              Connect Solana Wallet
+            </Button>
           </CardContent>
         </Card>
       )}
