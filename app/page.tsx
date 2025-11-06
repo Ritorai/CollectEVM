@@ -23,10 +23,15 @@ export default function Home() {
   const [, setSelectedTokenIds] = useState<string[]>([]);
   const [isLinking, setIsLinking] = useState(false);
 
+  const prevEvmAddressRef = React.useRef<string | null>(null);
   const handleEVMConnected = (_address: string) => {
-    // Reset state when EVM wallet changes
-    setSolanaData(null);
-    setSelectedTokenIds([]);
+    // Only reset state when EVM wallet ACTUALLY changes (not on every render)
+    if (prevEvmAddressRef.current !== _address) {
+      prevEvmAddressRef.current = _address;
+      console.log('🔄 EVM wallet changed, resetting solanaData');
+      setSolanaData(null);
+      setSelectedTokenIds([]);
+    }
   };
 
   // Debug: Log when solanaData changes

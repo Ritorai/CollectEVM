@@ -41,18 +41,17 @@ export function NFTSelection({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Debug: Log when solanaAddress or verifiedNFTs changes
+  // Debug: Log when solanaAddress or verifiedNFTs changes - REMOVED nfts to prevent infinite loop
+  const verifiedNFTsKey = verifiedNFTs.map(n => n.tokenId).join(',');
   useEffect(() => {
     console.log('🔍 NFTSelection props changed:', { 
       solanaAddress, 
       verifiedNFTsCount: verifiedNFTs.length,
       verifiedNFTs: verifiedNFTs,
       verifiedNFTsArray: JSON.stringify(verifiedNFTs),
-      nftsCount: nfts.length,
-      unlinkedCount: nfts.filter(nft => !nft.isLinked).length,
-      willShowNFTs: verifiedNFTs.length > 0
+      verifiedNFTsKey: verifiedNFTsKey
     });
-  }, [solanaAddress, verifiedNFTs, nfts]);
+  }, [solanaAddress, verifiedNFTsKey]);
 
   const fetchLinkingStatus = useCallback(async () => {
     if (!evmAddress) {
@@ -171,13 +170,12 @@ export function NFTSelection({
 
   // Fetch linking status when EVM address or verified NFTs change
   // Only refetch if verifiedNFTs actually changes (not just length, but content)
-  const verifiedNFTsKey = verifiedNFTs.map(nft => nft.tokenId).join(',');
   useEffect(() => {
     if (evmAddress) {
       fetchLinkingStatus();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [evmAddress, verifiedNFTsKey]);
+  }, [evmAddress, verifiedNFTsKey, fetchLinkingStatus]);
 
   const handleNFTSelect = (tokenId: string, checked: boolean) => {
     const newSelection = checked 
@@ -289,17 +287,17 @@ export function NFTSelection({
   // Show the section if we have verifiedNFTs, period. Don't wait for nftsToShow calculation.
   const shouldShowAvailableSection = verifiedNFTs.length > 0;
 
-  console.log('🎯 NFTSelection render - CRITICAL DEBUG:', {
-    verifiedNFTsCount: verifiedNFTs.length,
-    verifiedNFTs: verifiedNFTs,
-    verifiedNFTsString: JSON.stringify(verifiedNFTs),
-    allLinkedNFTsCount: allLinkedNFTs.length,
-    unlinkedVerifiedNFTsCount: unlinkedVerifiedNFTs.length,
-    nftsToShowCount: nftsToShow.length,
-    nftsToShow: nftsToShow,
-    shouldShowAvailableSection: shouldShowAvailableSection,
-    willShowAvailableSection: shouldShowAvailableSection
-  });
+  // Debug log only when verifiedNFTs changes (moved to useEffect to prevent render spam)
+  useEffect(() => {
+    if (verifiedNFTs.length > 0) {
+      console.log('🎯 NFTSelection - verifiedNFTs available:', {
+        verifiedNFTsCount: verifiedNFTs.length,
+        verifiedNFTs: verifiedNFTs,
+        nftsToShowCount: nftsToShow.length,
+        shouldShowAvailableSection: shouldShowAvailableSection
+      });
+    }
+  }, [verifiedNFTsKey, shouldShowAvailableSection, nftsToShow.length]);
 
   return (
     <div className={`space-y-6 ${isDisabled ? "opacity-50 pointer-events-none" : ""}`}>
@@ -404,11 +402,18 @@ export function NFTSelection({
               </div>
             )}
 
-            {/* Empty State - Only show if we truly have no NFTs */}
-            {allLinkedNFTs.length === 0 && verifiedNFTs.length === 0 && !loading && (
+            {/* Empty State - Only show if we truly have no NFTs AND no Solana wallet is verified */}
+            {allLinkedNFTs.length === 0 && verifiedNFTs.length === 0 && !loading && !solanaAddress && (
               <div className="text-center text-gray-600 py-8">
                 <p>No Wassieverse NFTs found.</p>
                 <p className="text-sm mt-2">Connect your Solana wallet and verify NFT ownership to see your NFTs here.</p>
+              </div>
+            )}
+            {/* Show different message if wallet is verified but no NFTs */}
+            {allLinkedNFTs.length === 0 && verifiedNFTs.length === 0 && !loading && solanaAddress && (
+              <div className="text-center text-gray-600 py-8">
+                <p>No Wassieverse NFTs found in this wallet.</p>
+                <p className="text-sm mt-2">Try connecting a different Solana wallet.</p>
               </div>
             )}
           </div>

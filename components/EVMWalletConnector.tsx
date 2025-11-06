@@ -28,9 +28,11 @@ export function EVMWalletConnector({ onConnected }: EVMWalletConnectorProps) {
     }
   };
 
-  // Notify parent when wallet connects
+  // Notify parent when wallet connects - only when it actually changes
+  const prevAddressRef = React.useRef<string | undefined>(undefined);
   React.useEffect(() => {
-    if (isConnected && address) {
+    if (isConnected && address && address !== prevAddressRef.current) {
+      prevAddressRef.current = address;
       onConnected(address);
     }
   }, [isConnected, address, onConnected]);
