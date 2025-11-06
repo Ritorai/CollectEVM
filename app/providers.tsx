@@ -34,7 +34,7 @@ export const Providers: FC<ProvidersProps> = ({ children }) => {
 
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect>
+      <WalletProvider wallets={wallets} autoConnect={false}>
         <WalletModalProvider>
           <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>

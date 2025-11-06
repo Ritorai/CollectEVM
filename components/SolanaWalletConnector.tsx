@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import React from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { Button } from "@/components/ui/button";
@@ -21,11 +22,19 @@ interface SolanaWalletConnectorProps {
 }
 
 export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletConnectorProps) {
-  const { publicKey, signMessage, connected } = useWallet();
+  const { publicKey, signMessage, connected, disconnect } = useWallet();
   const { toast } = useToast();
   const [isVerifying, setIsVerifying] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [nftCount, setNftCount] = useState<number | null>(null);
+
+  // Reset verification state when wallet disconnects or changes
+  React.useEffect(() => {
+    if (!connected || !publicKey) {
+      setIsVerified(false);
+      setNftCount(null);
+    }
+  }, [connected, publicKey]);
 
   const handleVerify = async () => {
     if (!publicKey || !signMessage) {
@@ -157,6 +166,16 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
               ) : (
                 "Verify NFT Ownership"
               )}
+            </Button>
+          )}
+
+          {connected && (
+            <Button
+              onClick={() => disconnect()}
+              variant="outline"
+              className="w-full"
+            >
+              Disconnect Solana Wallet
             </Button>
           )}
 

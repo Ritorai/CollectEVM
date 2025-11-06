@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import React from "react";
 import { SolanaWalletConnector } from "@/components/SolanaWalletConnector";
 import { EVMWalletConnector } from "@/components/EVMWalletConnector";
 import { NFTSelection } from "@/components/NFTSelection";
@@ -25,7 +26,15 @@ export default function Home() {
   const handleEVMConnected = (address: string) => {
     // Reset state when EVM wallet changes
     setSolanaData(null);
+    setSelectedTokenIds([]);
   };
+
+  // Reset selection when Solana wallet changes
+  React.useEffect(() => {
+    if (solanaData) {
+      setSelectedTokenIds([]);
+    }
+  }, [solanaData?.solAddress]);
 
   const handleLinkNFTs = async (tokenIds: string[]) => {
     if (!solanaData || !evmAddress) return;
