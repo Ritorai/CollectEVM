@@ -192,10 +192,10 @@ export function NFTSelection({
   };
 
   const handleSelectAllUnlinked = () => {
-    // Use verifiedNFTs directly if available, otherwise use nfts
-    const unlinkedTokenIds = verifiedNFTs.length > 0
-      ? verifiedNFTs.map(nft => nft.tokenId)
-      : nfts.filter(nft => !nft.isLinked).map(nft => nft.tokenId);
+    // Get unlinked NFTs from verifiedNFTs
+    const unlinkedTokenIds = verifiedNFTs
+      .filter(nft => !allLinkedNFTs.some(linked => linked.tokenId === nft.tokenId))
+      .map(nft => nft.tokenId);
     
     setSelectedTokenIds(unlinkedTokenIds);
     onSelectionChange(unlinkedTokenIds);
@@ -277,9 +277,15 @@ export function NFTSelection({
     });
   }
 
+  // Get unlinked NFTs from verifiedNFTs
+  const unlinkedVerifiedNFTs = verifiedNFTs.filter(nft => {
+    const isLinked = allLinkedNFTs.some(linked => linked.tokenId === nft.tokenId);
+    return !isLinked;
+  });
+
   return (
     <div className={`space-y-6 ${isDisabled ? "opacity-50 pointer-events-none" : ""}`}>
-      {/* Summary */}
+      {/* Your Wassieverse NFTs - Combined view */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
@@ -288,72 +294,102 @@ export function NFTSelection({
               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                 {allLinkedNFTs.length} Linked
               </Badge>
-              {verifiedNFTs.length > 0 && (
+              {unlinkedVerifiedNFTs.length > 0 && (
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                  {verifiedNFTs.length} Available
+                  {unlinkedVerifiedNFTs.length} Available
                 </Badge>
               )}
             </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex space-x-2">
-            {verifiedNFTs.length > 0 && (
-              <Button 
-                onClick={handleSelectAllUnlinked}
-                variant="outline"
-                size="sm"
-              >
-                Select All Unlinked ({verifiedNFTs.length})
-              </Button>
+          <div className="space-y-6">
+            {/* Linked NFTs Section */}
+            {allLinkedNFTs.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground mb-3">Already Linked</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {allLinkedNFTs.map((nft) => (
+                    <div key={nft.tokenId} className="border rounded-lg p-4 bg-green-50 border-green-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
+                          <p className="text-sm text-gray-600">
+                            {nft.linkedFromSolana && (
+                              <span>Linked from: {nft.linkedFromSolana.slice(0, 6)}...{nft.linkedFromSolana.slice(-4)}</span>
+                            )}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+                          <Link className="h-3 w-3 mr-1" />
+                          Linked
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
-            {selectedTokenIds.length > 0 && (
-              <Button 
-                onClick={handleClearSelection}
-                variant="outline"
-                size="sm"
-              >
-                Clear Selection
-              </Button>
+
+            {/* Available for Linking NFTs Section */}
+            {unlinkedVerifiedNFTs.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-muted-foreground">Available for Linking</h3>
+                  <div className="flex space-x-2">
+                    <Button 
+                      onClick={handleSelectAllUnlinked}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Select All ({unlinkedVerifiedNFTs.length})
+                    </Button>
+                    {selectedTokenIds.length > 0 && (
+                      <Button 
+                        onClick={handleClearSelection}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {unlinkedVerifiedNFTs.map((nft) => (
+                    <div key={nft.tokenId} className="border rounded-lg p-4 bg-blue-50 border-blue-200 relative">
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={selectedTokenIds.includes(nft.tokenId)}
+                          onCheckedChange={(checked) => 
+                            handleNFTSelect(nft.tokenId, checked as boolean)
+                          }
+                          className="absolute top-2 right-2"
+                        />
+                        <div className="flex-1 pr-8">
+                          <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
+                          <p className="text-sm text-gray-600">Ready to link</p>
+                        </div>
+                        <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                          Available
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {allLinkedNFTs.length === 0 && unlinkedVerifiedNFTs.length === 0 && (
+              <div className="text-center text-gray-600 py-8">
+                <p>No Wassieverse NFTs found.</p>
+                <p className="text-sm mt-2">Connect your Solana wallet and verify NFT ownership to see your NFTs here.</p>
+              </div>
             )}
           </div>
         </CardContent>
       </Card>
-
-      {/* Available NFTs for Linking - Show verifiedNFTs directly */}
-      {verifiedNFTs.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Unlink className="h-5 w-5 text-blue-600" />
-              <span>Available for Linking</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {verifiedNFTs.map((nft) => (
-                <div key={nft.tokenId} className="border rounded-lg p-4 bg-blue-50 border-blue-200">
-                  <div className="flex items-center space-x-3">
-                    <Checkbox
-                      checked={selectedTokenIds.includes(nft.tokenId)}
-                      onCheckedChange={(checked) => 
-                        handleNFTSelect(nft.tokenId, checked as boolean)
-                      }
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
-                      <p className="text-sm text-gray-600">Ready to link</p>
-                    </div>
-                    <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
-                      Available
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Link Selected NFTs Button - Show when NFTs are selected */}
       {selectedTokenIds.length > 0 && evmAddress && (
@@ -393,62 +429,6 @@ export function NFTSelection({
           </CardContent>
         </Card>
       )}
-
-      {/* All Linked NFTs (from any Solana wallet) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Link className="h-5 w-5 text-green-600" />
-            <span>Already Linked to Your EVM Profile ({allLinkedNFTs.length})</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {allLinkedNFTs.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Show NFTs from current wallet that are linked */}
-              {linkedNFTsFromCurrent.map((nft) => (
-                <div key={nft.tokenId} className="border rounded-lg p-4 bg-green-50 border-green-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
-                      <p className="text-sm text-gray-600">
-                        Already linked from this wallet
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
-                      <Link className="h-3 w-3 mr-1" />
-                      Linked
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-              {/* Show NFTs from other wallets that are linked */}
-              {allLinkedNFTsFiltered.map((nft) => (
-                <div key={nft.tokenId} className="border rounded-lg p-4 bg-green-50 border-green-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">Wassieverse #{nft.tokenId}</h3>
-                      <p className="text-sm text-gray-600">
-                        {nft.linkedFromSolana && (
-                          <span>Linked from: {nft.linkedFromSolana.slice(0, 6)}...{nft.linkedFromSolana.slice(-4)}</span>
-                        )}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
-                      <Link className="h-3 w-3 mr-1" />
-                      Linked
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center text-gray-600 py-4">
-              <p>No NFTs linked yet. Connect your Solana wallet to link your first NFTs.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
