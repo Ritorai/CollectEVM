@@ -29,11 +29,12 @@ interface NFTSelectionProps {
 export function NFTSelection({ 
   solanaAddress, 
   evmAddress, 
-  verifiedNFTs,
+  verifiedNFTs = [],
   onSelectionChange, 
   onLinkNFTs, 
   isLinking 
 }: NFTSelectionProps) {
+  const isDisabled = !evmAddress;
   const [nfts, setNfts] = useState<NFT[]>([]);
   const [allLinkedNFTs, setAllLinkedNFTs] = useState<NFT[]>([]); // All NFTs linked to EVM from any Solana wallet
   const [selectedTokenIds, setSelectedTokenIds] = useState<string[]>([]);
@@ -41,7 +42,12 @@ export function NFTSelection({
   const [error, setError] = useState<string | null>(null);
 
   const fetchLinkingStatus = useCallback(async () => {
-    if (!evmAddress) return;
+    if (!evmAddress) {
+      setAllLinkedNFTs([]);
+      setNfts([]);
+      setLoading(false);
+      return;
+    }
     
     setLoading(true);
     setError(null);
@@ -148,7 +154,8 @@ export function NFTSelection({
     if (evmAddress) {
       fetchLinkingStatus();
     }
-  }, [evmAddress, verifiedNFTs, fetchLinkingStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [evmAddress, verifiedNFTs?.length]);
 
   const handleNFTSelect = (tokenId: string, checked: boolean) => {
     const newSelection = checked 
@@ -173,9 +180,9 @@ export function NFTSelection({
     onSelectionChange([]);
   };
 
-  if (loading) {
+  if (loading && !isDisabled) {
     return (
-      <Card>
+      <Card className={isDisabled ? "opacity-50" : ""}>
         <CardContent className="p-6">
           <div className="flex items-center justify-center space-x-2">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -201,6 +208,23 @@ export function NFTSelection({
             >
               Try Again
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // If disabled, show placeholder
+  if (isDisabled) {
+    return (
+      <Card className="opacity-50">
+        <CardHeader>
+          <CardTitle>Your Wassieverse NFTs</CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="text-center text-gray-600 space-y-2">
+            <p className="font-semibold">Connect your EVM wallet to view linked NFTs</p>
+            <p className="text-sm">Step 1: Connect your EVM wallet above</p>
           </div>
         </CardContent>
       </Card>
@@ -244,7 +268,7 @@ export function NFTSelection({
   );
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isDisabled ? "opacity-50 pointer-events-none" : ""}`}>
       {/* Summary */}
       <Card>
         <CardHeader>
