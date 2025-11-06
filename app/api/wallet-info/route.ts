@@ -22,7 +22,9 @@ export async function GET(req: NextRequest) {
     const walletLink = await prisma.walletLink.findFirst({
       where: evmAddress
         ? { evmAddress: evmAddress.toLowerCase() }
-        : { solanaAddress },
+        : solanaAddress
+        ? { solanaAddress }
+        : undefined,
       include: {
         linkedNFTs: {
           select: {
