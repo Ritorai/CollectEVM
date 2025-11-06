@@ -48,13 +48,14 @@ export function NFTSelection({
     
     try {
       // First, fetch all NFTs linked to this EVM address from any Solana wallet
-      if (evmAddress) {
+      try {
         const profileResponse = await fetch(`/api/evm-profile?evmAddress=${evmAddress}`);
+        
         if (profileResponse.ok) {
           const profileData = await profileResponse.json();
           if (profileData.success) {
-            // Convert all linked NFTs to NFT format
-            const linkedNFTsList: NFT[] = profileData.data.nfts.map((nft: any) => ({
+            // Convert all linked NFTs to NFT format (handle empty array gracefully)
+            const linkedNFTsList: NFT[] = (profileData.data.nfts || []).map((nft: any) => ({
               mintAddress: nft.mintAddress,
               tokenId: nft.tokenId,
               name: `Wassieverse #${nft.tokenId}`,
@@ -63,45 +64,80 @@ export function NFTSelection({
               linkedFromSolana: nft.solanaAddress
             }));
             setAllLinkedNFTs(linkedNFTsList);
+          } else {
+            // API returned success: false, but that's okay - just means no NFTs
+            setAllLinkedNFTs([]);
+          }
+        } else {
+          // Non-OK response - try to get error message
+          try {
+            const errorData = await profileResponse.json();
+            console.error('Profile API error:', errorData);
+            // Don't set error here - just show empty state
+            setAllLinkedNFTs([]);
+          } catch {
+            // If we can't parse the error, just show empty state
+            setAllLinkedNFTs([]);
           }
         }
+      } catch (profileErr) {
+        // Network error or other fetch error
+        console.error('Error fetching profile:', profileErr);
+        // Don't show error for empty profiles - just set empty array
+        setAllLinkedNFTs([]);
       }
 
       // Then, get the linking status for NFTs in the currently connected Solana wallet (if any)
       if (verifiedNFTs && verifiedNFTs.length > 0) {
-        const linkingStatusResponse = await fetch('/api/nft-status', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            tokenIds: verifiedNFTs.map(nft => nft.tokenId),
-            evmAddress: evmAddress // Check if linked to this specific EVM address
-          }),
-        });
+        try {
+          const linkingStatusResponse = await fetch('/api/nft-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              tokenIds: verifiedNFTs.map(nft => nft.tokenId),
+              evmAddress: evmAddress // Check if linked to this specific EVM address
+            }),
+          });
 
-        let linkingStatuses: Record<string, { isLinked: boolean; linkedTo?: string; solanaAddress?: string }> = {};
-        
-        if (linkingStatusResponse.ok) {
-          const statusData = await linkingStatusResponse.json();
-          linkingStatuses = statusData.statuses || {};
+          let linkingStatuses: Record<string, { isLinked: boolean; linkedTo?: string; solanaAddress?: string }> = {};
+          
+          if (linkingStatusResponse.ok) {
+            const statusData = await linkingStatusResponse.json();
+            linkingStatuses = statusData.statuses || {};
+          }
+
+          // Combine verified NFT data with linking status
+          const nftsWithStatus = verifiedNFTs.map((nft) => ({
+            mintAddress: nft.mintAddress,
+            tokenId: nft.tokenId,
+            name: `Wassieverse #${nft.tokenId}`,
+            isLinked: linkingStatuses[nft.tokenId]?.isLinked || false,
+            linkedTo: linkingStatuses[nft.tokenId]?.linkedTo,
+            linkedFromSolana: linkingStatuses[nft.tokenId]?.solanaAddress
+          }));
+
+          setNfts(nftsWithStatus);
+        } catch (statusErr) {
+          console.error('Error fetching NFT status:', statusErr);
+          // If status check fails, just mark all as unlinked
+          const nftsWithStatus = verifiedNFTs.map((nft) => ({
+            mintAddress: nft.mintAddress,
+            tokenId: nft.tokenId,
+            name: `Wassieverse #${nft.tokenId}`,
+            isLinked: false,
+          }));
+          setNfts(nftsWithStatus);
         }
-
-        // Combine verified NFT data with linking status
-        const nftsWithStatus = verifiedNFTs.map((nft) => ({
-          mintAddress: nft.mintAddress,
-          tokenId: nft.tokenId,
-          name: `Wassieverse #${nft.tokenId}`,
-          isLinked: linkingStatuses[nft.tokenId]?.isLinked || false,
-          linkedTo: linkingStatuses[nft.tokenId]?.linkedTo,
-          linkedFromSolana: linkingStatuses[nft.tokenId]?.solanaAddress
-        }));
-
-        setNfts(nftsWithStatus);
       } else {
         // No verified NFTs from current Solana wallet
         setNfts([]);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load NFT status');
+      // Only show error for unexpected errors
+      console.error('Unexpected error in fetchLinkingStatus:', err);
+      // Don't set error for empty states - just show empty arrays
+      setAllLinkedNFTs([]);
+      setNfts([]);
     } finally {
       setLoading(false);
     }
@@ -150,12 +186,14 @@ export function NFTSelection({
     );
   }
 
-  if (error) {
+  // Only show error if we have a real error and no data at all
+  if (error && allLinkedNFTs.length === 0 && nfts.length === 0 && !loading) {
     return (
       <Card>
         <CardContent className="p-6">
-          <div className="text-center text-red-600">
-            <p>Error loading NFTs: {error}</p>
+          <div className="text-center text-red-600 space-y-2">
+            <p className="font-semibold">Error loading NFTs</p>
+            <p className="text-sm">{error}</p>
             <Button 
               onClick={fetchLinkingStatus} 
               variant="outline" 
