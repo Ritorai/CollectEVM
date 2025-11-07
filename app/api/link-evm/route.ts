@@ -81,6 +81,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!nonceRecord.used) {
+      return NextResponse.json(
+        { error: "Nonce has not been verified" },
+        { status: 400 }
+      );
+    }
+
     // 2. Verify EVM signature (only if required)
     if (requiresEvmSignature) {
       try {

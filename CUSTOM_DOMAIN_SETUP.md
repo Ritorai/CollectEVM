@@ -60,3 +60,4 @@ After DNS propagation (5-30 minutes, up to 48 hours):
 - Target Domain: link.wassieverse.io
 - SSL: Automatic (handled by Railway)
 
+
