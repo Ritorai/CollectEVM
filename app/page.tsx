@@ -23,6 +23,8 @@ export default function Home() {
     tokenIds: string[];
     signature: string;
     nfts?: { mintAddress: string; tokenId: string }[];
+    verificationNonce: string;
+    verificationMessage: string;
   } | null>(null);
 
   const [, setSelectedTokenIds] = useState<string[]>([]);
@@ -78,7 +80,14 @@ export default function Home() {
     setSelectedTokenIds([]);
   };
 
-  const handleSolanaVerified = (data: { solAddress: string; tokenIds: string[]; signature: string; nfts?: { mintAddress: string; tokenId: string }[] }) => {
+  const handleSolanaVerified = (data: {
+    solAddress: string;
+    tokenIds: string[];
+    signature: string;
+    nfts?: { mintAddress: string; tokenId: string }[];
+    verificationNonce: string;
+    verificationMessage: string;
+  }) => {
     // If solAddress is empty, it means we're clearing/disconnecting
     if (!data.solAddress || data.solAddress === '') {
       console.log('🔄 Clearing solanaData due to disconnect');
@@ -111,18 +120,11 @@ export default function Home() {
 
     setIsLinking(true);
     try {
-      // Step 1: Get a new nonce for Solana linking
-      const nonceResponse = await fetch("/api/nonce", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address: solanaData.solAddress }),
-      });
-
-      if (!nonceResponse.ok) {
-        throw new Error("Failed to get nonce");
+      // Use the nonce that was verified during the Solana signature step
+      const nonce = solanaData.verificationNonce;
+      if (!nonce) {
+        throw new Error("Missing verified nonce. Please verify your Solana wallet again.");
       }
-
-      const { nonce } = await nonceResponse.json();
 
       // Step 2: Check if EVM wallet is actually connected (for signature)
       // If not connected but locked, we'll skip EVM signature

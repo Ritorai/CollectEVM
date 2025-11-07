@@ -18,7 +18,14 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 
 interface SolanaWalletConnectorProps {
   evmAddress: string | null;
-  onVerified: (data: { solAddress: string; tokenIds: string[]; signature: string; nfts: { mintAddress: string; tokenId: string }[] }) => void;
+  onVerified: (data: {
+    solAddress: string;
+    tokenIds: string[];
+    signature: string;
+    nfts: { mintAddress: string; tokenId: string }[];
+    verificationNonce: string;
+    verificationMessage: string;
+  }) => void;
 }
 
 export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletConnectorProps) {
@@ -50,7 +57,9 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
         solAddress: '',
         tokenIds: [],
         signature: '',
-        nfts: []
+        nfts: [],
+        verificationNonce: '',
+        verificationMessage: ''
       });
     } 
     // If wallet changed (different publicKey while still connected)
@@ -65,7 +74,9 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
         solAddress: '',
         tokenIds: [],
         signature: '',
-        nfts: []
+        nfts: [],
+        verificationNonce: '',
+        verificationMessage: ''
       });
     }
     // If wallet connected for the first time or reconnected with same key
@@ -170,6 +181,8 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
           tokenIds: verifyData.tokenIds,
           signature: signatureBase58,
           nfts: nftsArray,
+          verificationNonce: nonce,
+          verificationMessage: message,
         };
         
         console.log('📤 SolanaWalletConnector: Calling onVerified with:', dataToPass);
