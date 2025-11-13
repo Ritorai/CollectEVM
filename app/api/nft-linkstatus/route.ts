@@ -11,8 +11,18 @@ const DEFAULT_RATE_WINDOW_SECONDS = Number(
 
 function getClientIdentifier(req: NextRequest): string {
   const headerIp =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
-  return req.ip ?? headerIp ?? "unknown";
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("x-real-ip")?.trim() ??
+    req.headers.get("cf-connecting-ip")?.trim();
+
+  if (headerIp && headerIp.length > 0) {
+    return headerIp;
+  }
+
+  const userAgent = req.headers.get("user-agent") ?? "unknown-agent";
+  const accept = req.headers.get("accept") ?? "unknown-accept";
+
+  return `${userAgent}-${accept}`;
 }
 
 export async function POST(req: NextRequest) {
