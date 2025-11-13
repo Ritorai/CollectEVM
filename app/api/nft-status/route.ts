@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
-    const { tokenIds, evmAddress } = await req.json();
+    const { tokenIds } = await req.json();
 
     if (!tokenIds || !Array.isArray(tokenIds)) {
       return NextResponse.json(

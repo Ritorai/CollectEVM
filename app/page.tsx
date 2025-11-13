@@ -8,6 +8,7 @@ import { EVMWalletConnector } from "@/components/EVMWalletConnector";
 import { NFTSelection } from "@/components/NFTSelection";
 import { useAccount, useSignMessage } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
+import { NFTLinkStatus } from "@/components/NFTLinkStatus";
 
 export default function Home() {
   const { address: evmAddressFromWagmi, isConnected: isEVMConnectedFromWagmi } = useAccount();
@@ -242,6 +243,8 @@ export default function Home() {
               isLinking={isLinking}
             />
           </div>
+
+          <NFTLinkStatus />
 
               {/* Footer Info */}
               <div className="bg-[#202020] rounded-xl p-6 text-sm text-[#A0A0A0] space-y-2 card-depth border border-[#2a2a2a]">
