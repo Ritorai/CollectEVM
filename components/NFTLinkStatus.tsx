@@ -8,7 +8,7 @@ import { Loader2, Search } from "lucide-react";
 const MIN_TOKEN_ID = 0;
 const MAX_TOKEN_ID = 2999;
 
-type StatusType = "idle" | "success" | "error";
+type StatusType = "idle" | "available" | "linked" | "error";
 
 interface StatusState {
   type: StatusType;
@@ -38,8 +38,10 @@ function shortenAddress(address: string | null | undefined): string | null {
 
 function getStatusStyles(type: StatusType): string {
   switch (type) {
-    case "success":
+    case "available":
       return "border-[#34C759]/40 bg-[#112412] text-[#d4f7d9]";
+    case "linked":
+      return "border-[#B066FF]/40 bg-[#2a1a3a] text-[#E9D9FF]";
     case "error":
       return "border-red-500/40 bg-[#2a1111] text-red-300";
     default:
@@ -55,8 +57,7 @@ export function NFTLinkStatus() {
   const [remainingChecks, setRemainingChecks] = useState<number | null>(null);
 
   const description = useMemo(
-    () =>
-      `Check if a Wassieverse token ID between ${MIN_TOKEN_ID} and ${MAX_TOKEN_ID} is already linked.`,
+    () => "Check if a specific Wassieverse NFT Token ID is already linked.",
     []
   );
 
@@ -142,13 +143,13 @@ export function NFTLinkStatus() {
           ].filter(Boolean);
 
           setStatus({
-            type: "success",
+            type: "linked",
             message: `Token #${data.data.tokenId} is already linked.`,
             detail: detailParts.length > 0 ? detailParts.join(" • ") : null,
           });
         } else {
           setStatus({
-            type: "success",
+            type: "available",
             message: `Token #${data.data.tokenId} has not been linked yet.`,
             detail: "No existing link was found for this token ID.",
           });
@@ -233,10 +234,6 @@ export function NFTLinkStatus() {
             )}
           </div>
         )}
-
-        <p className="text-xs text-[#6e6e6e]">
-          This check is independent of wallet connections and does not affect other actions on the site.
-        </p>
       </CardContent>
     </Card>
   );

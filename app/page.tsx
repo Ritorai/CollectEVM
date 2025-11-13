@@ -255,6 +255,7 @@ export default function Home() {
                   <li>Select and link your Wassieverse NFTs to your EVM profile</li>
                   <li>Add more Solana wallets to link additional NFTs to the same EVM profile</li>
                   <li>All your NFTs from different Solana wallets are aggregated in one place</li>
+                  <li>Check if a specific Wassieverse NFT Token ID is already linked before buying on secondary</li>
                 </ol>
               </div>
         </div>
