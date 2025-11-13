@@ -43,18 +43,10 @@ export default function Home() {
     if (evmAddressFromWagmi && isEVMConnectedFromWagmi) {
       if (!lockedEvmAddress) {
         // No address locked yet - lock the new one
-        console.log('🔒 Locking EVM address (first connection):', evmAddressFromWagmi);
         setLockedEvmAddress(evmAddressFromWagmi);
-      } else if (lockedEvmAddress.toLowerCase() === evmAddressFromWagmi.toLowerCase()) {
-        // Same address reconnected - that's fine, keep it locked
-        console.log('🔒 EVM address reconnected (same address):', evmAddressFromWagmi);
-      } else {
+      } else if (lockedEvmAddress.toLowerCase() !== evmAddressFromWagmi.toLowerCase()) {
         // Different address connected - don't change the locked address!
         // This prevents switching Solana wallets from changing the EVM address
-        console.log('⚠️ Different EVM address detected, but keeping locked address:', {
-          locked: lockedEvmAddress,
-          new: evmAddressFromWagmi
-        });
       }
     }
     // Don't clear lockedEvmAddress when wallet disconnects - keep it locked until user clicks disconnect
@@ -65,7 +57,6 @@ export default function Home() {
     // Only reset state when EVM wallet ACTUALLY changes (not on every render)
     if (prevEvmAddressRef.current !== _address) {
       prevEvmAddressRef.current = _address;
-      console.log('🔄 EVM wallet changed, resetting solanaData');
       setSolanaData(null);
       setSelectedTokenIds([]);
       // Lock the new address
@@ -75,7 +66,6 @@ export default function Home() {
 
   const handleEVMDisconnected = () => {
     // User explicitly clicked "Disconnect EVM Wallet" - clear the lock
-    console.log('🔓 Unlocking EVM address - user explicitly disconnected');
     setLockedEvmAddress(null);
     setSolanaData(null);
     setSelectedTokenIds([]);
@@ -91,7 +81,6 @@ export default function Home() {
   }) => {
     // If solAddress is empty, it means we're clearing/disconnecting
     if (!data.solAddress || data.solAddress === '') {
-      console.log('🔄 Clearing solanaData due to disconnect');
       setSolanaData(null);
       setSelectedTokenIds([]);
     } else {
@@ -101,17 +90,7 @@ export default function Home() {
   };
 
   // Debug: Log when solanaData changes
-  React.useEffect(() => {
-    console.log('🏠 Home: solanaData changed:', { 
-      hasSolanaData: !!solanaData, 
-      solAddress: solanaData?.solAddress,
-      nftCount: solanaData?.nfts?.length,
-      nfts: solanaData?.nfts,
-      nftsString: JSON.stringify(solanaData?.nfts),
-      fullSolanaData: JSON.stringify(solanaData),
-      willPassToNFTSelection: solanaData?.nfts ?? []
-    });
-  }, [solanaData]);
+
 
   // Don't clear selection when verifying - only clear when wallet actually changes
   // Selection should persist through verification
@@ -150,7 +129,6 @@ export default function Home() {
         }
       } else {
         // EVM wallet is locked but not connected - skip signature
-        console.log('⏭️ EVM wallet is locked but not connected - skipping EVM signature');
       }
 
       // Step 3: Send to backend for verification and linking - pass selected tokenIds

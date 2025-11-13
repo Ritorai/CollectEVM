@@ -44,16 +44,6 @@ export function NFTSelection({
 
   // Debug: Log when solanaAddress or verifiedNFTs changes - REMOVED nfts to prevent infinite loop
   const verifiedNFTsKey = verifiedNFTs.map(n => n.tokenId).join(',');
-  useEffect(() => {
-    console.log('🔍 NFTSelection props changed:', { 
-      solanaAddress, 
-      verifiedNFTsCount: verifiedNFTs.length,
-      verifiedNFTs: verifiedNFTs,
-      verifiedNFTsArray: JSON.stringify(verifiedNFTs),
-      verifiedNFTsKey: verifiedNFTsKey
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solanaAddress, verifiedNFTsKey]);
 
   const fetchLinkingStatus = useCallback(async () => {
     if (!evmAddress) {
@@ -109,7 +99,6 @@ export function NFTSelection({
 
       // Then, get the linking status for NFTs in the currently connected Solana wallet (if any)
       if (verifiedNFTs && verifiedNFTs.length > 0) {
-        console.log('Fetching linking status for verified NFTs:', verifiedNFTs);
         try {
           const linkingStatusResponse = await fetch('/api/nft-status', {
             method: 'POST',
@@ -125,7 +114,6 @@ export function NFTSelection({
           if (linkingStatusResponse.ok) {
             const statusData = await linkingStatusResponse.json();
             linkingStatuses = statusData.statuses || {};
-            console.log('Linking statuses received:', linkingStatuses);
             
             // Combine verified NFT data with linking status
             const nftsWithStatus = verifiedNFTs.map((nft) => ({
@@ -137,7 +125,6 @@ export function NFTSelection({
               linkedFromSolana: linkingStatuses[nft.tokenId]?.solanaAddress
             }));
 
-            console.log('Setting NFTs with status:', nftsWithStatus);
             setNfts(nftsWithStatus);
             setStatusCheckComplete(true); // Mark status check as complete
           } else {
@@ -155,7 +142,6 @@ export function NFTSelection({
       } else {
         // Clear NFTs if no verified NFTs (but keep if solanaAddress exists and we're just waiting)
         if (!solanaAddress || verifiedNFTs.length === 0) {
-          console.log('Clearing NFTs - no verified NFTs or no solanaAddress');
           setNfts([]);
           setStatusCheckComplete(false);
         }
@@ -221,18 +207,6 @@ export function NFTSelection({
   const shouldShowAvailableSection = verifiedNFTs.length > 0 && statusCheckComplete && nftsToShow.length > 0;
 
   // Debug log only when verifiedNFTs changes (moved here to be before early returns)
-  useEffect(() => {
-    if (verifiedNFTs.length > 0) {
-      console.log('🎯 NFTSelection - verifiedNFTs available:', {
-        verifiedNFTsCount: verifiedNFTs.length,
-        verifiedNFTs: verifiedNFTs,
-        nftsToShowCount: nftsToShow.length,
-        shouldShowAvailableSection: shouldShowAvailableSection
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [verifiedNFTsKey]);
-
   const handleNFTSelect = (tokenId: string, checked: boolean) => {
     const newSelection = checked 
       ? [...selectedTokenIds, tokenId]
@@ -240,7 +214,6 @@ export function NFTSelection({
     
     setSelectedTokenIds(newSelection);
     onSelectionChange(newSelection);
-    console.log('NFT Selection updated:', { tokenId, checked, newSelection, solanaAddress, evmAddress });
   };
 
   const handleSelectAllUnlinked = () => {
@@ -315,17 +288,6 @@ export function NFTSelection({
       }
 
 
-  // Debug: Log button visibility conditions
-  if (selectedTokenIds.length > 0) {
-    console.log('Button visibility check:', { 
-      selectedCount: selectedTokenIds.length, 
-      hasEvm: !!evmAddress, 
-      hasSolana: !!solanaAddress,
-      solanaAddress: solanaAddress,
-      verifiedNFTsCount: verifiedNFTs?.length || 0
-    });
-  }
-
   return (
     <div className={`space-y-6 ${isDisabled ? "opacity-50 pointer-events-none" : ""}`}>
       {/* Your Wassieverse NFTs - Combined view */}
@@ -376,7 +338,6 @@ export function NFTSelection({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {/* Show verifiedNFTs directly if nftsToShow is empty (shouldn't happen, but safety) */}
                   {(nftsToShow.length > 0 ? nftsToShow : verifiedNFTs).map((nft) => {
-                    console.log('🎨 Rendering available NFT:', nft);
                     return (
                       <div key={nft.tokenId} className="border rounded-xl p-4 bg-[#1a1a2a] border-[#B066FF]/30 relative card-depth hover:border-[#B066FF]/50 transition-colors">
                         <div className="flex items-center space-x-3">
