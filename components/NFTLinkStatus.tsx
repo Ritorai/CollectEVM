@@ -39,9 +39,9 @@ function shortenAddress(address: string | null | undefined): string | null {
 function getStatusStyles(type: StatusType): string {
   switch (type) {
     case "available":
-      return "border-[#34C759]/40 bg-[#112412] text-[#d4f7d9]";
-    case "linked":
       return "border-[#B066FF]/40 bg-[#2a1a3a] text-[#E9D9FF]";
+    case "linked":
+      return "border-[#34C759]/40 bg-[#112412] text-[#d4f7d9]";
     case "error":
       return "border-red-500/40 bg-[#2a1111] text-red-300";
     default:
@@ -54,7 +54,6 @@ export function NFTLinkStatus() {
   const [status, setStatus] = useState<StatusState | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [resetAt, setResetAt] = useState<string | null>(null);
-  const [remainingChecks, setRemainingChecks] = useState<number | null>(null);
 
   const description = useMemo(
     () => "Check if a specific Wassieverse NFT Token ID is already linked.",
@@ -93,7 +92,6 @@ export function NFTLinkStatus() {
       setIsChecking(true);
       setStatus(null);
       setResetAt(null);
-      setRemainingChecks(null);
 
       try {
         const response = await fetch("/api/nft-linkstatus", {
@@ -127,12 +125,6 @@ export function NFTLinkStatus() {
           });
           return;
         }
-
-        setRemainingChecks(
-          typeof data.data.remainingChecks === "number"
-            ? data.data.remainingChecks
-            : null
-        );
 
         if (data.data.isLinked) {
           const linkedTo = shortenAddress(data.data.linkedTo);
@@ -209,12 +201,6 @@ export function NFTLinkStatus() {
             </Button>
           </div>
         </form>
-
-        {remainingChecks !== null && (
-          <p className="text-xs text-[#6e6e6e]">
-            Checks remaining in this window: {remainingChecks}
-          </p>
-        )}
 
         {resetAt && (
           <p className="text-xs text-[#ff9a9a]">
