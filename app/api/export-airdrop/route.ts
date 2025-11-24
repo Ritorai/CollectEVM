@@ -1,14 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import * as fs from "fs";
-import * as path from "path";
 
 interface AirdropRow {
   EVM: string;
   Amount: string | number;
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     // Query the EVMAirdrop table using raw SQL
     const rows = await prisma.$queryRaw<AirdropRow[]>`
