@@ -9,7 +9,6 @@ import { NFTSelection } from "@/components/NFTSelection";
 import { useAccount, useSignMessage } from "wagmi";
 import { useToast } from "@/hooks/use-toast";
 import { NFTLinkStatus } from "@/components/NFTLinkStatus";
-import { Card, CardContent } from "@/components/ui/card";
 
 export default function Home() {
   const { address: evmAddressFromWagmi, isConnected: isEVMConnectedFromWagmi } = useAccount();
@@ -169,9 +168,6 @@ export default function Home() {
     }
   };
 
-  // Hide wallet linking features during pause
-  const isPaused = true;
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0a0a0f] via-[#121212] to-[#1a0a1f] dark">
       <div className="container mx-auto px-4 py-12">
@@ -193,64 +189,47 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Pause Message */}
-          {isPaused && (
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center">
-                  <p className="text-lg text-[#A0A0A0]">
-                    NFT to EVM Wallet Linker paused. It will be reopened after Mint
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {/* Main Content */}
+          <div className="grid gap-6">
+            {/* Step 1: EVM Wallet Connection */}
+            <EVMWalletConnector 
+              onConnected={handleEVMConnected}
+              onDisconnected={handleEVMDisconnected}
+            />
 
-          {/* Main Content - Hidden during pause but logic still available */}
-          {!isPaused && (
-            <div className="grid gap-6">
-              {/* Step 1: EVM Wallet Connection */}
-              <EVMWalletConnector 
-                onConnected={handleEVMConnected}
-                onDisconnected={handleEVMDisconnected}
-              />
+            {/* Step 2: Solana Wallet Connection - Always show, grayed out until EVM connected */}
+            <SolanaWalletConnector
+              evmAddress={evmAddress || null}
+              onVerified={handleSolanaVerified}
+            />
 
-              {/* Step 2: Solana Wallet Connection - Always show, grayed out until EVM connected */}
-              <SolanaWalletConnector
-                evmAddress={evmAddress || null}
-                onVerified={handleSolanaVerified}
-              />
+            {/* NFT Selection - Always show, grayed out until EVM connected */}
+            <NFTSelection
+              key={`nft-selection-${solanaData?.solAddress || 'no-solana'}-${evmAddress || 'no-evm'}`}
+              solanaAddress={solanaData?.solAddress ?? null}
+              evmAddress={evmAddress ?? null}
+              verifiedNFTs={solanaData?.nfts ?? []}
+              onSelectionChange={setSelectedTokenIds}
+              onLinkNFTs={handleLinkNFTs}
+              isLinking={isLinking}
+            />
+          </div>
 
-              {/* NFT Selection - Always show, grayed out until EVM connected */}
-              <NFTSelection
-                key={`nft-selection-${solanaData?.solAddress || 'no-solana'}-${evmAddress || 'no-evm'}`}
-                solanaAddress={solanaData?.solAddress ?? null}
-                evmAddress={evmAddress ?? null}
-                verifiedNFTs={solanaData?.nfts ?? []}
-                onSelectionChange={setSelectedTokenIds}
-                onLinkNFTs={handleLinkNFTs}
-                isLinking={isLinking}
-              />
-            </div>
-          )}
-
-          {/* NFT Link Status - Always visible */}
+          {/* NFT Link Status */}
           <NFTLinkStatus />
 
-          {/* Footer Info - Hidden during pause */}
-          {!isPaused && (
-            <div className="bg-[#202020] rounded-xl p-6 text-sm text-[#A0A0A0] space-y-2 card-depth border border-[#2a2a2a]">
-              <h3 className="font-semibold text-white">How it works:</h3>
-              <ol className="list-decimal list-inside space-y-1">
-                <li>Connect your EVM wallet (MetaMask, WalletConnect, etc.) - this becomes your profile</li>
-                <li>Connect your Solana wallet (Phantom, etc.) and verify NFT ownership</li>
-                <li>Select and link your Wassieverse NFTs to your EVM profile</li>
-                <li>Add more Solana wallets to link additional NFTs to the same EVM profile</li>
-                <li>All your NFTs from different Solana wallets are aggregated in one place</li>
-                <li>Check if a specific Wassieverse NFT Token ID is already linked before buying on secondary</li>
-              </ol>
-            </div>
-          )}
+          {/* Footer Info */}
+          <div className="bg-[#202020] rounded-xl p-6 text-sm text-[#A0A0A0] space-y-2 card-depth border border-[#2a2a2a]">
+            <h3 className="font-semibold text-white">How it works:</h3>
+            <ol className="list-decimal list-inside space-y-1">
+              <li>Connect your EVM wallet (MetaMask, WalletConnect, etc.) - this becomes your profile</li>
+              <li>Connect your Solana wallet (Phantom, etc.) and verify NFT ownership</li>
+              <li>Select and link your Wassieverse NFTs to your EVM profile</li>
+              <li>Add more Solana wallets to link additional NFTs to the same EVM profile</li>
+              <li>All your NFTs from different Solana wallets are aggregated in one place</li>
+              <li>Check if a specific Wassieverse NFT Token ID is already linked before buying on secondary</li>
+            </ol>
+          </div>
         </div>
       </div>
     </div>
