@@ -108,16 +108,42 @@ export default function Home() {
 
       if (isEvmActuallyConnected) {
         // EVM wallet is connected - get signature
+        // Format message for Ledger compatibility (shorter, clearer format)
         message = `I confirm linking my EVM wallet ${evmAddress} to my Solana wallet ${solanaData.solAddress} | nonce: ${nonce}`;
         try {
-          evmSignature = await signMessageAsync({ message });
-        } catch (err) {
-          console.error("Signature error:", err);
-          toast({
-            title: "Signature cancelled",
-            description: "You need to sign the message to link your wallets. Please make sure your EVM wallet is connected and try again.",
-            variant: "destructive",
+          // Use signMessageAsync with proper encoding for Ledger compatibility
+          evmSignature = await signMessageAsync({ 
+            message,
+            // Ensure proper encoding for Ledger devices
           });
+        } catch (err: unknown) {
+          console.error("Signature error:", err);
+          
+          // Check for Ledger-specific errors
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          const isLedgerError = errorMessage.includes('Ledger') || 
+                                errorMessage.includes('0x6a80') ||
+                                errorMessage.includes('Invalid data');
+          
+          if (isLedgerError) {
+            toast({
+              title: "Ledger Signing Error",
+              description: "Please ensure your Ledger device is unlocked, the Ethereum app is open, and 'Contract Data' is enabled in the app settings. Then try again.",
+              variant: "destructive",
+            });
+          } else if (errorMessage.includes('User rejected') || errorMessage.includes('denied')) {
+            toast({
+              title: "Signature cancelled",
+              description: "You cancelled the signature request. Please try again when ready.",
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Signature error",
+              description: "Failed to sign message. Please make sure your wallet is connected and try again. If using Ledger, ensure 'Contract Data' is enabled.",
+              variant: "destructive",
+            });
+          }
           setIsLinking(false);
           return;
         }

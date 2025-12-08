@@ -104,7 +104,7 @@ export function EVMWalletConnector({ onConnected, onDisconnected }: EVMWalletCon
           {isConnected && <CheckCircle2 className="h-5 w-5 text-[#34C759]" />}
         </CardTitle>
         <CardDescription className="text-[#A0A0A0]">
-          Connect your MetaMask or WalletConnect wallet. This will be your profile where all your Wassieverse NFTs from different Solana wallets will be linked.
+          Connect your MetaMask, WalletConnect, or Ledger wallet. This will be your profile where all your Wassieverse NFTs from different Solana wallets will be linked.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
