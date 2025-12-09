@@ -80,16 +80,59 @@ export async function POST(req: NextRequest) {
       // Ledger Solana wallets use Solana's standard off-chain message format
       let verified = false;
       
-      // Method 1: Standard UTF-8 encoding (most wallets including Phantom)
-      verified = nacl.sign.detached.verify(
-        messageBytes,
-        signatureBytes,
-        publicKey.toBytes()
-      );
+      // Method 1: Solana's official off-chain message format (Ledger uses this)
+      // Format: VERSION (1 byte = 0x00) + DOMAIN_SEPARATOR (15 bytes) + MESSAGE_LENGTH (4 bytes LE) + MESSAGE
+      // This is the exact format the Solana wallet adapter uses for hardware wallets like Ledger
+      {
+        const VERSION = new Uint8Array([0]); // Off-chain message version
+        const DOMAIN_SEPARATOR = new TextEncoder().encode("solana offchain");
+        const messageContent = new TextEncoder().encode(message);
+        
+        // Encode message length as 4-byte little-endian integer
+        const messageLength = new Uint8Array(4);
+        const len = messageContent.length;
+        messageLength[0] = len & 0xff;
+        messageLength[1] = (len >> 8) & 0xff;
+        messageLength[2] = (len >> 16) & 0xff;
+        messageLength[3] = (len >> 24) & 0xff;
+        
+        // Build the complete formatted message
+        const formattedMessage = new Uint8Array(
+          VERSION.length + 
+          DOMAIN_SEPARATOR.length + 
+          messageLength.length + 
+          messageContent.length
+        );
+        let offset = 0;
+        formattedMessage.set(VERSION, offset);
+        offset += VERSION.length;
+        formattedMessage.set(DOMAIN_SEPARATOR, offset);
+        offset += DOMAIN_SEPARATOR.length;
+        formattedMessage.set(messageLength, offset);
+        offset += messageLength.length;
+        formattedMessage.set(messageContent, offset);
+        
+        verified = nacl.sign.detached.verify(
+          formattedMessage,
+          signatureBytes,
+          publicKey.toBytes()
+        );
+        
+        if (verified) {
+          console.log("✅ Ledger signature verified using Solana standard off-chain format");
+        }
+      }
+      
+      // Method 2: Standard UTF-8 encoding (most wallets including Phantom)
+      if (!verified) {
+        verified = nacl.sign.detached.verify(
+          messageBytes,
+          signatureBytes,
+          publicKey.toBytes()
+        );
+      }
 
-      // Method 2: Solana's standard off-chain message format (Ledger uses this)
-      // The Solana wallet adapter formats messages as: DOMAIN_SEPARATOR + MESSAGE
-      // Where DOMAIN_SEPARATOR = "solana offchain" (without quotes, as bytes)
+      // Method 3: Simple domain separator format (alternative)
       if (!verified) {
         const DOMAIN_SEPARATOR = new TextEncoder().encode("solana offchain");
         const messageContent = new TextEncoder().encode(message);
@@ -106,26 +149,7 @@ export async function POST(req: NextRequest) {
         );
       }
       
-      // Method 2b: Try with version byte prefix (some Ledger implementations)
-      // Format: VERSION_BYTE (0x00) + DOMAIN_SEPARATOR + MESSAGE
-      if (!verified) {
-        const VERSION_BYTE = new Uint8Array([0]);
-        const DOMAIN_SEPARATOR = new TextEncoder().encode("solana offchain");
-        const messageContent = new TextEncoder().encode(message);
-        
-        const versionedMessage = new Uint8Array(VERSION_BYTE.length + DOMAIN_SEPARATOR.length + messageContent.length);
-        versionedMessage.set(VERSION_BYTE, 0);
-        versionedMessage.set(DOMAIN_SEPARATOR, VERSION_BYTE.length);
-        versionedMessage.set(messageContent, VERSION_BYTE.length + DOMAIN_SEPARATOR.length);
-        
-        verified = nacl.sign.detached.verify(
-          versionedMessage,
-          signatureBytes,
-          publicKey.toBytes()
-        );
-      }
-
-      // Method 3: Try with simple "solana offchain" prefix (alternative format)
+      // Method 4: Try with message as raw Uint8Array (in case of encoding differences)
       if (!verified) {
         const prefix = new TextEncoder().encode("solana offchain");
         const messageContent = new TextEncoder().encode(message);
