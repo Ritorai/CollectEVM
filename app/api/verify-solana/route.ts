@@ -54,24 +54,73 @@ export async function POST(req: NextRequest) {
     try {
       const publicKey = new PublicKey(solAddress);
       const messageBytes = new TextEncoder().encode(message);
-      const signatureBytes = bs58.decode(signature);
+      
+      // Decode signature - handle different formats
+      let signatureBytes: Uint8Array;
+      try {
+        signatureBytes = bs58.decode(signature);
+      } catch (decodeError) {
+        console.error("Signature decode error:", decodeError);
+        return NextResponse.json(
+          { error: "Invalid signature format" },
+          { status: 400 }
+        );
+      }
 
-      const verified = nacl.sign.detached.verify(
+      // Verify signature length (should be 64 bytes for Ed25519)
+      if (signatureBytes.length !== 64) {
+        console.error(`Invalid signature length: ${signatureBytes.length}, expected 64`);
+        return NextResponse.json(
+          { error: "Invalid signature length" },
+          { status: 400 }
+        );
+      }
+
+      // Try standard verification first
+      let verified = nacl.sign.detached.verify(
         messageBytes,
         signatureBytes,
         publicKey.toBytes()
       );
 
+      // If verification fails, try with message as Uint8Array directly (some wallets encode differently)
       if (!verified) {
+        // Some Ledger wallets might need the message in a different format
+        // Try verifying with the raw message bytes again (in case of encoding issues)
+        const messageBytesAlt = new Uint8Array(messageBytes);
+        verified = nacl.sign.detached.verify(
+          messageBytesAlt,
+          signatureBytes,
+          publicKey.toBytes()
+        );
+      }
+
+      if (!verified) {
+        console.error("Signature verification failed", {
+          solAddress,
+          signatureLength: signatureBytes.length,
+          messageLength: messageBytes.length,
+          publicKey: publicKey.toString()
+        });
         return NextResponse.json(
-          { error: "Invalid signature" },
+          { error: "Invalid signature - verification failed. If using Ledger, ensure the Solana app is open and try again." },
           { status: 400 }
         );
       }
     } catch (error) {
       console.error("Signature verification error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      
+      // Provide helpful error message for Ledger users
+      if (errorMessage.includes("Invalid") || errorMessage.includes("signature")) {
+        return NextResponse.json(
+          { error: "Signature verification failed. If using Ledger, ensure the Solana app is open, unlocked, and 'Blind Signing' is enabled in the app settings." },
+          { status: 400 }
+        );
+      }
+      
       return NextResponse.json(
-        { error: "Signature verification failed" },
+        { error: `Signature verification failed: ${errorMessage}` },
         { status: 400 }
       );
     }

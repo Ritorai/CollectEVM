@@ -128,12 +128,38 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
       let signature: Uint8Array;
       try {
         signature = await signMessage(messageBytes);
-      } catch {
-        toast({
-          title: "Signature cancelled",
-          description: "You need to sign the message to verify ownership",
-          variant: "destructive",
-        });
+        
+        // Validate signature format (should be 64 bytes for Ed25519)
+        if (!signature || signature.length !== 64) {
+          throw new Error("Invalid signature format received from wallet");
+        }
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        
+        // Check if it's a user cancellation
+        if (errorMessage.includes("User rejected") || 
+            errorMessage.includes("denied") ||
+            errorMessage.includes("cancelled")) {
+          toast({
+            title: "Signature cancelled",
+            description: "You need to sign the message to verify ownership",
+            variant: "destructive",
+          });
+        } else if (errorMessage.includes("Ledger") || 
+                   errorMessage.includes("0x6a80") ||
+                   errorMessage.includes("Invalid data")) {
+          toast({
+            title: "Ledger Signing Error",
+            description: "Please ensure your Ledger device is unlocked, the Solana app is open, and 'Blind Signing' is enabled in the Solana app settings.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Signature Error",
+            description: errorMessage || "Failed to sign message. If using Ledger, ensure 'Blind Signing' is enabled.",
+            variant: "destructive",
+          });
+        }
         setIsVerifying(false);
         return;
       }
@@ -155,7 +181,12 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
       const verifyData = await verifyResponse.json();
 
       if (!verifyResponse.ok) {
-        throw new Error(verifyData.error || "Verification failed");
+        const errorMsg = verifyData.error || "Verification failed";
+        // Provide helpful guidance for Ledger users
+        if (errorMsg.includes("Invalid signature") || errorMsg.includes("verification failed")) {
+          throw new Error(`${errorMsg}. If using Ledger, ensure 'Blind Signing' is enabled in the Solana app settings.`);
+        }
+        throw new Error(errorMsg);
       }
 
       if (verifyData.verified) {
@@ -224,7 +255,7 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
             <CardDescription className="text-[#A0A0A0]">
               {disabled
                 ? "Complete Step 1 first - connect your EVM wallet"
-                : "Connect your Phantom wallet to verify Wassieverse NFT ownership"}
+                : "Connect your Solana wallet (Phantom, Ledger, etc.) to verify Wassieverse NFT ownership"}
             </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
