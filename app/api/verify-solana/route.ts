@@ -100,9 +100,9 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Method 3: Try using Solana's built-in verify method (better Ledger compatibility)
+      // Method 3: Additional Ledger compatibility note
       // Note: PublicKey doesn't have a verify method, but we can use nacl with different message formats
-      // Some Ledger implementations might sign with additional metadata
+      // Some Ledger implementations might sign with additional metadata or different encoding
 
       // Method 4: Try with message as raw Uint8Array (in case of encoding differences)
       if (!verified) {
