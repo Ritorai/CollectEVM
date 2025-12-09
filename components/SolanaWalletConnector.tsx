@@ -167,6 +167,7 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
       const signatureBase58 = bs58.encode(signature);
 
       // Step 3: Verify Solana signature and check NFTs
+      // Send both message string and message bytes for verification
       const verifyResponse = await fetch("/api/verify-solana", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -174,6 +175,7 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
           solAddress,
           signature: signatureBase58,
           message,
+          messageBytes: Array.from(messageBytes), // Send the exact bytes that were signed
           nonce,
         }),
       });

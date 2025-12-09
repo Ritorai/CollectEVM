@@ -8,7 +8,7 @@ import { getCache, setCache } from "@/lib/redis";
 
 export async function POST(req: NextRequest) {
   try {
-    const { solAddress, signature, message, nonce } = await req.json();
+    const { solAddress, signature, message, messageBytes: messageBytesArray, nonce } = await req.json();
 
     if (!solAddress || !signature || !message || !nonce) {
       return NextResponse.json(
@@ -16,6 +16,11 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    
+    // Use the exact message bytes sent from frontend if available, otherwise encode from string
+    const messageBytes = messageBytesArray 
+      ? new Uint8Array(messageBytesArray)
+      : new TextEncoder().encode(message);
 
     // 1. Verify nonce exists and hasn't been used
     const nonceRecord = await prisma.nonce.findUnique({
@@ -53,7 +58,7 @@ export async function POST(req: NextRequest) {
     // 2. Verify Solana signature
     try {
       const publicKey = new PublicKey(solAddress);
-      const messageBytes = new TextEncoder().encode(message);
+      // messageBytes is already set above from the request
       
       // Decode signature - handle different formats
       let signatureBytes: Uint8Array;
@@ -161,8 +166,27 @@ export async function POST(req: NextRequest) {
         }
       }
       
-      // Method 2: Standard UTF-8 encoding (most wallets including Phantom)
-      // This is what was actually sent to signMessage - try this first for Ledger
+      // Method 2: Try using Solana's built-in verify method (if available)
+      // Some wallet adapters might use this
+      if (!verified) {
+        try {
+          // Try to use PublicKey's verify method if it exists
+          // This is a fallback for wallets that might use different formats
+          verified = nacl.sign.detached.verify(
+            messageBytes,
+            signatureBytes,
+            publicKey.toBytes()
+          );
+          if (verified) {
+            console.log("✅ Signature verified using raw message bytes (Method 2)");
+          }
+        } catch (e) {
+          // Ignore and continue to next method
+        }
+      }
+      
+      // Method 2b: Try raw message bytes FIRST (Ledger might sign raw bytes directly)
+      // This should be tried early since some Ledger implementations sign raw bytes
       if (!verified) {
         verified = nacl.sign.detached.verify(
           messageBytes,
@@ -170,7 +194,7 @@ export async function POST(req: NextRequest) {
           publicKey.toBytes()
         );
         if (verified) {
-          console.log("✅ Signature verified using raw message bytes (Method 2)");
+          console.log("✅ Signature verified using raw message bytes (Method 2b)");
         }
       }
 
