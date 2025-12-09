@@ -80,10 +80,48 @@ export async function POST(req: NextRequest) {
       // Ledger Solana wallets use Solana's standard off-chain message format
       let verified = false;
       
-      // Method 1: Solana's official off-chain message format (Ledger uses this)
-      // Format: VERSION (1 byte = 0x00) + DOMAIN_SEPARATOR (15 bytes) + MESSAGE_LENGTH (4 bytes LE) + MESSAGE
-      // This is the exact format the Solana wallet adapter uses for hardware wallets like Ledger
+      // Method 1: Solana's official off-chain message format WITHOUT version byte
+      // Format: DOMAIN_SEPARATOR (15 bytes) + MESSAGE_LENGTH (4 bytes LE) + MESSAGE
+      // Some wallet adapters use this format (without version byte)
       {
+        const DOMAIN_SEPARATOR = new TextEncoder().encode("solana offchain");
+        const messageContent = new TextEncoder().encode(message);
+        
+        // Encode message length as 4-byte little-endian integer
+        const messageLength = new Uint8Array(4);
+        const len = messageContent.length;
+        messageLength[0] = len & 0xff;
+        messageLength[1] = (len >> 8) & 0xff;
+        messageLength[2] = (len >> 16) & 0xff;
+        messageLength[3] = (len >> 24) & 0xff;
+        
+        // Build the formatted message: DOMAIN + LENGTH + MESSAGE
+        const formattedMessage = new Uint8Array(
+          DOMAIN_SEPARATOR.length + 
+          messageLength.length + 
+          messageContent.length
+        );
+        let offset = 0;
+        formattedMessage.set(DOMAIN_SEPARATOR, offset);
+        offset += DOMAIN_SEPARATOR.length;
+        formattedMessage.set(messageLength, offset);
+        offset += messageLength.length;
+        formattedMessage.set(messageContent, offset);
+        
+        verified = nacl.sign.detached.verify(
+          formattedMessage,
+          signatureBytes,
+          publicKey.toBytes()
+        );
+        
+        if (verified) {
+          console.log("✅ Ledger signature verified using format: DOMAIN + LENGTH + MESSAGE");
+        }
+      }
+      
+      // Method 1b: Solana's official off-chain message format WITH version byte
+      // Format: VERSION (1 byte = 0x00) + DOMAIN_SEPARATOR (15 bytes) + MESSAGE_LENGTH (4 bytes LE) + MESSAGE
+      if (!verified) {
         const VERSION = new Uint8Array([0]); // Off-chain message version
         const DOMAIN_SEPARATOR = new TextEncoder().encode("solana offchain");
         const messageContent = new TextEncoder().encode(message);
@@ -96,7 +134,7 @@ export async function POST(req: NextRequest) {
         messageLength[2] = (len >> 16) & 0xff;
         messageLength[3] = (len >> 24) & 0xff;
         
-        // Build the complete formatted message
+        // Build the complete formatted message: VERSION + DOMAIN + LENGTH + MESSAGE
         const formattedMessage = new Uint8Array(
           VERSION.length + 
           DOMAIN_SEPARATOR.length + 
@@ -119,25 +157,29 @@ export async function POST(req: NextRequest) {
         );
         
         if (verified) {
-          console.log("✅ Ledger signature verified using Solana standard off-chain format");
+          console.log("✅ Ledger signature verified using format: VERSION + DOMAIN + LENGTH + MESSAGE");
         }
       }
       
       // Method 2: Standard UTF-8 encoding (most wallets including Phantom)
+      // This is what was actually sent to signMessage - try this first for Ledger
       if (!verified) {
         verified = nacl.sign.detached.verify(
           messageBytes,
           signatureBytes,
           publicKey.toBytes()
         );
+        if (verified) {
+          console.log("✅ Signature verified using raw message bytes (Method 2)");
+        }
       }
 
-      // Method 3: Simple domain separator format (alternative)
+      // Method 3: Simple domain separator format (DOMAIN + MESSAGE, no length)
       if (!verified) {
         const DOMAIN_SEPARATOR = new TextEncoder().encode("solana offchain");
         const messageContent = new TextEncoder().encode(message);
         
-        // Standard format: domain separator + message
+        // Format: domain separator + message (no length field)
         const standardMessage = new Uint8Array(DOMAIN_SEPARATOR.length + messageContent.length);
         standardMessage.set(DOMAIN_SEPARATOR, 0);
         standardMessage.set(messageContent, DOMAIN_SEPARATOR.length);
@@ -147,23 +189,71 @@ export async function POST(req: NextRequest) {
           signatureBytes,
           publicKey.toBytes()
         );
+        if (verified) {
+          console.log("✅ Signature verified using format: DOMAIN + MESSAGE (no length)");
+        }
       }
       
-      // Method 4: Try with message as raw Uint8Array (in case of encoding differences)
+      // Method 4: VERSION + DOMAIN + MESSAGE (no length field)
       if (!verified) {
-        const prefix = new TextEncoder().encode("solana offchain");
+        const VERSION = new Uint8Array([0]);
+        const DOMAIN_SEPARATOR = new TextEncoder().encode("solana offchain");
         const messageContent = new TextEncoder().encode(message);
-        const prefixedMessage = new Uint8Array(prefix.length + messageContent.length);
-        prefixedMessage.set(prefix, 0);
-        prefixedMessage.set(messageContent, prefix.length);
+        
+        const versionedMessage = new Uint8Array(
+          VERSION.length + DOMAIN_SEPARATOR.length + messageContent.length
+        );
+        let offset = 0;
+        versionedMessage.set(VERSION, offset);
+        offset += VERSION.length;
+        versionedMessage.set(DOMAIN_SEPARATOR, offset);
+        offset += DOMAIN_SEPARATOR.length;
+        versionedMessage.set(messageContent, offset);
+        
         verified = nacl.sign.detached.verify(
-          prefixedMessage,
+          versionedMessage,
           signatureBytes,
           publicKey.toBytes()
         );
+        if (verified) {
+          console.log("✅ Signature verified using format: VERSION + DOMAIN + MESSAGE (no length)");
+        }
       }
-
-      // Method 4: Try with message as raw Uint8Array (in case of encoding differences)
+      
+      // Method 5: DOMAIN + MESSAGE_LENGTH (big-endian) + MESSAGE
+      if (!verified) {
+        const DOMAIN_SEPARATOR = new TextEncoder().encode("solana offchain");
+        const messageContent = new TextEncoder().encode(message);
+        
+        // Encode message length as 4-byte big-endian integer
+        const messageLength = new Uint8Array(4);
+        const len = messageContent.length;
+        messageLength[0] = (len >> 24) & 0xff;
+        messageLength[1] = (len >> 16) & 0xff;
+        messageLength[2] = (len >> 8) & 0xff;
+        messageLength[3] = len & 0xff;
+        
+        const formattedMessage = new Uint8Array(
+          DOMAIN_SEPARATOR.length + messageLength.length + messageContent.length
+        );
+        let offset = 0;
+        formattedMessage.set(DOMAIN_SEPARATOR, offset);
+        offset += DOMAIN_SEPARATOR.length;
+        formattedMessage.set(messageLength, offset);
+        offset += messageLength.length;
+        formattedMessage.set(messageContent, offset);
+        
+        verified = nacl.sign.detached.verify(
+          formattedMessage,
+          signatureBytes,
+          publicKey.toBytes()
+        );
+        if (verified) {
+          console.log("✅ Signature verified using format: DOMAIN + LENGTH(BE) + MESSAGE");
+        }
+      }
+      
+      // Method 6: Try with message as raw Uint8Array (exact bytes sent to signMessage)
       if (!verified) {
         const messageBytesAlt = new Uint8Array(messageBytes);
         verified = nacl.sign.detached.verify(
@@ -171,20 +261,32 @@ export async function POST(req: NextRequest) {
           signatureBytes,
           publicKey.toBytes()
         );
+        if (verified) {
+          console.log("✅ Signature verified using raw message bytes (Method 6)");
+        }
       }
 
       if (!verified) {
         // Log detailed information for debugging Ledger issues
-        console.error("Signature verification failed - all methods attempted", {
+        console.error("Signature verification failed - all 6 methods attempted", {
           solAddress,
           signatureLength: signatureBytes.length,
           messageLength: messageBytes.length,
           message: message, // Full message for debugging
-          messageBytes: Array.from(messageBytes).slice(0, 50), // First 50 bytes
+          messageBytes: Array.from(messageBytes), // All message bytes
           publicKey: publicKey.toString(),
-          publicKeyBytes: Array.from(publicKey.toBytes()).slice(0, 10), // First 10 bytes
+          publicKeyBytes: Array.from(publicKey.toBytes()),
           signatureBase58: bs58.encode(signatureBytes),
-          signatureBytes: Array.from(signatureBytes).slice(0, 10) // First 10 bytes
+          signatureBytes: Array.from(signatureBytes),
+          attemptedFormats: [
+            "1: DOMAIN + LENGTH(LE) + MESSAGE",
+            "1b: VERSION + DOMAIN + LENGTH(LE) + MESSAGE", 
+            "2: Raw message bytes",
+            "3: DOMAIN + MESSAGE (no length)",
+            "4: VERSION + DOMAIN + MESSAGE (no length)",
+            "5: DOMAIN + LENGTH(BE) + MESSAGE",
+            "6: Raw message bytes (alt)"
+          ]
         });
         
         // Return detailed error for Ledger users
