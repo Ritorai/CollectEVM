@@ -101,14 +101,8 @@ export async function POST(req: NextRequest) {
       }
 
       // Method 3: Try using Solana's built-in verify method (better Ledger compatibility)
-      if (!verified) {
-        try {
-          verified = publicKey.verify(messageBytes, signatureBytes);
-        } catch (verifyError) {
-          // If verify method fails, continue to next method
-          console.log("PublicKey.verify failed, trying alternative methods");
-        }
-      }
+      // Note: PublicKey doesn't have a verify method, but we can use nacl with different message formats
+      // Some Ledger implementations might sign with additional metadata
 
       // Method 4: Try with message as raw Uint8Array (in case of encoding differences)
       if (!verified) {
@@ -121,14 +115,21 @@ export async function POST(req: NextRequest) {
       }
 
       if (!verified) {
-        console.error("Signature verification failed", {
+        // Log detailed information for debugging Ledger issues
+        console.error("Signature verification failed - all methods attempted", {
           solAddress,
           signatureLength: signatureBytes.length,
           messageLength: messageBytes.length,
-          publicKey: publicKey.toString()
+          messagePreview: message.substring(0, 100),
+          publicKey: publicKey.toString(),
+          signatureBase58: bs58.encode(signatureBytes).substring(0, 20) + "..."
         });
+        
+        // Return detailed error for Ledger users
         return NextResponse.json(
-          { error: "Invalid signature - verification failed. If using Ledger, ensure the Solana app is open and try again." },
+          { 
+            error: "Invalid signature - verification failed. If using Ledger, please ensure: 1) The Solana app is open and unlocked, 2) 'Blind Signing' is enabled in the Solana app settings (Settings → Blind Signing → Enabled), 3) Try disconnecting and reconnecting your Ledger wallet, then verify again." 
+          },
           { status: 400 }
         );
       }
