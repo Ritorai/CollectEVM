@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Try multiple verification methods for Ledger compatibility
+      // Ledger Solana wallets use Solana's standard off-chain message format
       let verified = false;
       
       // Method 1: Standard UTF-8 encoding (most wallets including Phantom)
@@ -86,7 +87,45 @@ export async function POST(req: NextRequest) {
         publicKey.toBytes()
       );
 
-      // Method 2: Try with Solana's standard message prefix (some Ledger implementations use this)
+      // Method 2: Solana's standard off-chain message format (Ledger uses this)
+      // The Solana wallet adapter formats messages as: DOMAIN_SEPARATOR + MESSAGE
+      // Where DOMAIN_SEPARATOR = "solana offchain" (without quotes, as bytes)
+      if (!verified) {
+        const DOMAIN_SEPARATOR = new TextEncoder().encode("solana offchain");
+        const messageContent = new TextEncoder().encode(message);
+        
+        // Standard format: domain separator + message
+        const standardMessage = new Uint8Array(DOMAIN_SEPARATOR.length + messageContent.length);
+        standardMessage.set(DOMAIN_SEPARATOR, 0);
+        standardMessage.set(messageContent, DOMAIN_SEPARATOR.length);
+        
+        verified = nacl.sign.detached.verify(
+          standardMessage,
+          signatureBytes,
+          publicKey.toBytes()
+        );
+      }
+      
+      // Method 2b: Try with version byte prefix (some Ledger implementations)
+      // Format: VERSION_BYTE (0x00) + DOMAIN_SEPARATOR + MESSAGE
+      if (!verified) {
+        const VERSION_BYTE = new Uint8Array([0]);
+        const DOMAIN_SEPARATOR = new TextEncoder().encode("solana offchain");
+        const messageContent = new TextEncoder().encode(message);
+        
+        const versionedMessage = new Uint8Array(VERSION_BYTE.length + DOMAIN_SEPARATOR.length + messageContent.length);
+        versionedMessage.set(VERSION_BYTE, 0);
+        versionedMessage.set(DOMAIN_SEPARATOR, VERSION_BYTE.length);
+        versionedMessage.set(messageContent, VERSION_BYTE.length + DOMAIN_SEPARATOR.length);
+        
+        verified = nacl.sign.detached.verify(
+          versionedMessage,
+          signatureBytes,
+          publicKey.toBytes()
+        );
+      }
+
+      // Method 3: Try with simple "solana offchain" prefix (alternative format)
       if (!verified) {
         const prefix = new TextEncoder().encode("solana offchain");
         const messageContent = new TextEncoder().encode(message);
@@ -99,10 +138,6 @@ export async function POST(req: NextRequest) {
           publicKey.toBytes()
         );
       }
-
-      // Method 3: Additional Ledger compatibility note
-      // Note: PublicKey doesn't have a verify method, but we can use nacl with different message formats
-      // Some Ledger implementations might sign with additional metadata or different encoding
 
       // Method 4: Try with message as raw Uint8Array (in case of encoding differences)
       if (!verified) {
@@ -120,9 +155,12 @@ export async function POST(req: NextRequest) {
           solAddress,
           signatureLength: signatureBytes.length,
           messageLength: messageBytes.length,
-          messagePreview: message.substring(0, 100),
+          message: message, // Full message for debugging
+          messageBytes: Array.from(messageBytes).slice(0, 50), // First 50 bytes
           publicKey: publicKey.toString(),
-          signatureBase58: bs58.encode(signatureBytes).substring(0, 20) + "..."
+          publicKeyBytes: Array.from(publicKey.toBytes()).slice(0, 10), // First 10 bytes
+          signatureBase58: bs58.encode(signatureBytes),
+          signatureBytes: Array.from(signatureBytes).slice(0, 10) // First 10 bytes
         });
         
         // Return detailed error for Ledger users
