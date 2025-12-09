@@ -76,17 +76,42 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Try standard verification first
-      let verified = nacl.sign.detached.verify(
+      // Try multiple verification methods for Ledger compatibility
+      let verified = false;
+      
+      // Method 1: Standard UTF-8 encoding (most wallets including Phantom)
+      verified = nacl.sign.detached.verify(
         messageBytes,
         signatureBytes,
         publicKey.toBytes()
       );
 
-      // If verification fails, try with message as Uint8Array directly (some wallets encode differently)
+      // Method 2: Try with Solana's standard message prefix (some Ledger implementations use this)
       if (!verified) {
-        // Some Ledger wallets might need the message in a different format
-        // Try verifying with the raw message bytes again (in case of encoding issues)
+        const prefix = new TextEncoder().encode("solana offchain");
+        const messageContent = new TextEncoder().encode(message);
+        const prefixedMessage = new Uint8Array(prefix.length + messageContent.length);
+        prefixedMessage.set(prefix, 0);
+        prefixedMessage.set(messageContent, prefix.length);
+        verified = nacl.sign.detached.verify(
+          prefixedMessage,
+          signatureBytes,
+          publicKey.toBytes()
+        );
+      }
+
+      // Method 3: Try using Solana's built-in verify method (better Ledger compatibility)
+      if (!verified) {
+        try {
+          verified = publicKey.verify(messageBytes, signatureBytes);
+        } catch (verifyError) {
+          // If verify method fails, continue to next method
+          console.log("PublicKey.verify failed, trying alternative methods");
+        }
+      }
+
+      // Method 4: Try with message as raw Uint8Array (in case of encoding differences)
+      if (!verified) {
         const messageBytesAlt = new Uint8Array(messageBytes);
         verified = nacl.sign.detached.verify(
           messageBytesAlt,
