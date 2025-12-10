@@ -29,11 +29,14 @@ interface SolanaWalletConnectorProps {
 }
 
 export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletConnectorProps) {
-  const { publicKey, signMessage, connected, disconnect } = useWallet();
+  const { publicKey, signMessage, connected, disconnect, wallet } = useWallet();
   const { toast } = useToast();
   const [isVerifying, setIsVerifying] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [nftCount, setNftCount] = useState<number | null>(null);
+  
+  // Detect if wallet is Ledger (check wallet adapter name)
+  const isLedgerWallet = wallet?.adapter?.name?.toLowerCase().includes('ledger') || false;
 
   // Track previous publicKey to detect wallet changes
   const prevPublicKeyRef = React.useRef<string | null>(null);
@@ -93,10 +96,10 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
   }, [connected, publicKey, onVerified]);
 
   const handleVerify = async () => {
-    if (!publicKey || !signMessage) {
+    if (!publicKey) {
       toast({
         title: "Wallet not connected",
-        description: "Please connect your Phantom wallet first",
+        description: "Please connect your Solana wallet first",
         variant: "destructive",
       });
       return;
@@ -106,6 +109,62 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
 
     try {
       const solAddress = publicKey.toString();
+
+      // For Ledger wallets, skip signature verification and just check NFTs
+      if (isLedgerWallet) {
+        console.log("🔐 Ledger wallet detected - skipping signature verification");
+        
+        // Directly verify NFTs without signature
+        const verifyResponse = await fetch("/api/verify-solana", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            solAddress,
+            skipSignature: true, // Flag to skip signature verification for Ledger
+          }),
+        });
+
+        const verifyData = await verifyResponse.json();
+
+        if (!verifyResponse.ok) {
+          const errorMsg = verifyData.error || "Verification failed";
+          throw new Error(errorMsg);
+        }
+
+        if (verifyData.verified) {
+          setIsVerified(true);
+          setNftCount(verifyData.tokenIds.length);
+          
+          const nftsArray = verifyData.nfts || [];
+          
+          const dataToPass = {
+            solAddress,
+            tokenIds: verifyData.tokenIds,
+            signature: '', // Empty signature for Ledger (not required)
+            nfts: nftsArray,
+            verificationNonce: '', // Empty nonce for Ledger
+            verificationMessage: '', // Empty message for Ledger
+          };
+          
+          toast({
+            title: "Solana wallet verified!",
+            description: `Found ${verifyData.tokenIds.length} Wassieverse NFT(s)`,
+          });
+
+          onVerified(dataToPass);
+        }
+        return;
+      }
+
+      // For non-Ledger wallets, use the normal signature verification flow
+      if (!signMessage) {
+        toast({
+          title: "Wallet not supported",
+          description: "This wallet does not support message signing",
+          variant: "destructive",
+        });
+        return;
+      }
 
       // Step 1: Get nonce
       const nonceResponse = await fetch("/api/nonce", {
@@ -145,18 +204,10 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
             description: "You need to sign the message to verify ownership",
             variant: "destructive",
           });
-        } else if (errorMessage.includes("Ledger") || 
-                   errorMessage.includes("0x6a80") ||
-                   errorMessage.includes("Invalid data")) {
-          toast({
-            title: "Ledger Signing Error",
-            description: "Please ensure your Ledger device is unlocked, the Solana app is open, and 'Blind Signing' is enabled in the Solana app settings.",
-            variant: "destructive",
-          });
         } else {
           toast({
             title: "Signature Error",
-            description: errorMessage || "Failed to sign message. If using Ledger, ensure 'Blind Signing' is enabled.",
+            description: errorMessage || "Failed to sign message",
             variant: "destructive",
           });
         }
@@ -167,7 +218,6 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
       const signatureBase58 = bs58.encode(signature);
 
       // Step 3: Verify Solana signature and check NFTs
-      // Send both message string and message bytes for verification
       const verifyResponse = await fetch("/api/verify-solana", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -175,8 +225,9 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
           solAddress,
           signature: signatureBase58,
           message,
-          messageBytes: Array.from(messageBytes), // Send the exact bytes that were signed
+          messageBytes: Array.from(messageBytes),
           nonce,
+          skipSignature: false,
         }),
       });
 

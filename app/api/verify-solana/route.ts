@@ -8,11 +8,68 @@ import { getCache, setCache } from "@/lib/redis";
 
 export async function POST(req: NextRequest) {
   try {
-    const { solAddress, signature, message, messageBytes: messageBytesArray, nonce } = await req.json();
+    const { solAddress, signature, message, messageBytes: messageBytesArray, nonce, skipSignature } = await req.json();
 
-    if (!solAddress || !signature || !message || !nonce) {
+    if (!solAddress) {
       return NextResponse.json(
         { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+    
+    // For Ledger wallets, skip signature verification and just check NFTs
+    if (skipSignature === true) {
+      console.log(`🔐 Skipping signature verification for Ledger wallet: ${solAddress}`);
+      
+      // Directly query Solana blockchain for Wassieverse NFTs
+      let nfts: { mintAddress: string; tokenId: string }[] = [];
+      try {
+        // Check Redis cache first (cache for 5 minutes = 300 seconds)
+        const cacheKey = `nfts:${solAddress}`;
+        const cachedNFTs = await getCache(cacheKey);
+        
+        if (cachedNFTs) {
+          console.log(`✅ Using cached NFTs for ${solAddress}`);
+          nfts = JSON.parse(cachedNFTs);
+        } else {
+          console.log(`🔍 Fetching NFTs from blockchain for Ledger wallet: ${solAddress}`);
+          nfts = await getWassieverseNFTs(solAddress);
+          
+          // Cache the result for 5 minutes
+          if (nfts.length > 0) {
+            await setCache(cacheKey, JSON.stringify(nfts), 300);
+          }
+        }
+        
+        if (nfts.length === 0) {
+          return NextResponse.json(
+            { error: "No Wassieverse NFTs found in this wallet" },
+            { status: 404 }
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching NFTs:", error);
+        return NextResponse.json(
+          { error: "Failed to fetch NFTs from blockchain" },
+          { status: 500 }
+        );
+      }
+
+      // Extract just the token IDs for the response
+      const tokenIds = nfts.map(nft => nft.tokenId);
+
+      return NextResponse.json({
+        verified: true,
+        tokenIds,
+        nfts,
+        message: `Found ${nfts.length} Wassieverse NFT(s)`,
+      });
+    }
+
+    // Normal flow: require signature verification for non-Ledger wallets
+    if (!signature || !message || !nonce) {
+      return NextResponse.json(
+        { error: "Missing required fields for signature verification" },
         { status: 400 }
       );
     }
