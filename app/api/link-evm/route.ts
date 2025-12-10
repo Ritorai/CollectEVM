@@ -21,17 +21,15 @@ export async function POST(req: NextRequest) {
       evmAddress,
       evmSignature, // Optional if EVM address is already linked (locked)
       message,
-      nonce,
-      solanaSignature,
+      nonce, // Optional - no longer required since we removed signature verification
+      solanaSignature, // Optional - no longer required since we removed signature verification
       selectedTokenIds, // Optional: if provided, only link these specific tokenIds
       skipEvmSignature, // Flag to skip EVM signature (when EVM is locked but not connected)
     } = requestData;
 
     if (
       !solanaAddress ||
-      !evmAddress ||
-      !nonce ||
-      !solanaSignature
+      !evmAddress
     ) {
       return NextResponse.json(
         { error: "Missing required fields" },
@@ -56,36 +54,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Verify nonce exists and hasn't been used for EVM linking
-    const nonceRecord = await prisma.nonce.findFirst({
-      where: {
-        nonce,
-        address: solanaAddress,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    // 1. Verify nonce (only if provided - optional now since we removed signature verification)
+    // If nonce is provided, verify it was used (for backward compatibility)
+    if (nonce) {
+      const nonceRecord = await prisma.nonce.findFirst({
+        where: {
+          nonce,
+          address: solanaAddress,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
 
-    if (!nonceRecord) {
-      return NextResponse.json(
-        { error: "Invalid nonce" },
-        { status: 400 }
-      );
-    }
+      if (nonceRecord) {
+        if (new Date() > nonceRecord.expiresAt) {
+          return NextResponse.json(
+            { error: "Nonce expired" },
+            { status: 400 }
+          );
+        }
 
-    if (new Date() > nonceRecord.expiresAt) {
-      return NextResponse.json(
-        { error: "Nonce expired" },
-        { status: 400 }
-      );
-    }
-
-    if (!nonceRecord.used) {
-      return NextResponse.json(
-        { error: "Nonce has not been verified" },
-        { status: 400 }
-      );
+        if (!nonceRecord.used) {
+          return NextResponse.json(
+            { error: "Nonce has not been verified" },
+            { status: 400 }
+          );
+        }
+      }
+      // If nonce is provided but not found, that's okay - we'll proceed without it
     }
 
     // 2. Verify EVM signature (only if required)
@@ -206,16 +203,21 @@ export async function POST(req: NextRequest) {
     // Prepare wallet link data
     // If updating existing link and skipping EVM signature, we can omit evmSignature
     // If creating new link, we need evmSignature (but can use existing one from another link if EVM already linked)
+    // solanaSignature is now optional since we removed signature verification
     const updateData: {
       tokenIds: string;
-      solanaSignature: string;
+      solanaSignature?: string;
       evmSignature?: string;
       updatedAt: Date;
     } = {
       tokenIds: tokenIdsJson,
-      solanaSignature,
       updatedAt: new Date(),
     };
+    
+    // Only include solanaSignature if provided
+    if (solanaSignature) {
+      updateData.solanaSignature = solanaSignature;
+    }
 
     // Only include evmSignature in update if provided
     if (evmSignature) {
@@ -251,7 +253,7 @@ export async function POST(req: NextRequest) {
         solanaAddress,
         evmAddress: evmAddress.toLowerCase(),
         tokenIds: tokenIdsJson,
-        solanaSignature,
+        solanaSignature: solanaSignature || '', // Use empty string if not provided
         evmSignature: createEvmSignature,
       },
     });

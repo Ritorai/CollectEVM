@@ -94,13 +94,7 @@ export default function Home() {
 
     setIsLinking(true);
     try {
-      // Use the nonce that was verified during the Solana signature step
-      const nonce = solanaData.verificationNonce;
-      if (!nonce) {
-        throw new Error("Missing verified nonce. Please verify your Solana wallet again.");
-      }
-
-      // Step 2: Check if EVM wallet is actually connected (for signature)
+      // Step 1: Check if EVM wallet is actually connected (for signature)
       // If not connected but locked, we'll skip EVM signature
       const isEvmActuallyConnected = isEVMConnectedFromWagmi && evmAddressFromWagmi?.toLowerCase() === evmAddress.toLowerCase();
       let evmSignature: string | undefined;
@@ -109,7 +103,11 @@ export default function Home() {
       if (isEvmActuallyConnected) {
         // EVM wallet is connected - get signature
         // Format message for Ledger compatibility (shorter, clearer format)
-        message = `I confirm linking my EVM wallet ${evmAddress} to my Solana wallet ${solanaData.solAddress} | nonce: ${nonce}`;
+        // Nonce is optional now - use it if available, otherwise omit it
+        const nonce = solanaData.verificationNonce;
+        message = nonce 
+          ? `I confirm linking my EVM wallet ${evmAddress} to my Solana wallet ${solanaData.solAddress} | nonce: ${nonce}`
+          : `I confirm linking my EVM wallet ${evmAddress} to my Solana wallet ${solanaData.solAddress}`;
         try {
           // Use signMessageAsync with proper encoding for Ledger compatibility
           evmSignature = await signMessageAsync({ 
@@ -151,7 +149,8 @@ export default function Home() {
         // EVM wallet is locked but not connected - skip signature
       }
 
-      // Step 3: Send to backend for verification and linking - pass selected tokenIds
+      // Step 2: Send to backend for verification and linking - pass selected tokenIds
+      // Nonce and solanaSignature are now optional since we removed signature verification
       const linkResponse = await fetch("/api/link-evm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -160,8 +159,8 @@ export default function Home() {
           evmAddress,
           evmSignature: evmSignature, // May be undefined if wallet not connected
           message: message, // May be undefined if wallet not connected
-          nonce,
-          solanaSignature: solanaData.signature,
+          nonce: solanaData.verificationNonce || undefined, // Optional - only send if available
+          solanaSignature: solanaData.signature || undefined, // Optional - only send if available
           selectedTokenIds: selectedTokenIds, // Pass only selected tokenIds
           skipEvmSignature: !isEvmActuallyConnected, // Flag to skip EVM signature
         }),
