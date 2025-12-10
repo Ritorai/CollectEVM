@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-interface LinkedNFTRow {
-  evmAddress: string;
-  tokenId: string;
-}
-
 export async function GET() {
   try {
     // Query LinkedNFT table for entries after 2025-11-26
@@ -53,4 +48,3 @@ export async function GET() {
     );
   }
 }
-
