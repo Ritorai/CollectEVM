@@ -13,7 +13,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import bs58 from "bs58";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 interface SolanaWalletConnectorProps {
@@ -29,20 +28,17 @@ interface SolanaWalletConnectorProps {
 }
 
 export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletConnectorProps) {
-  const { publicKey, signMessage, connected, disconnect, wallet } = useWallet();
+  const { publicKey, connected, disconnect } = useWallet();
   const { toast } = useToast();
   const [isVerifying, setIsVerifying] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [nftCount, setNftCount] = useState<number | null>(null);
-  
-  // Detect if wallet is Ledger (check wallet adapter name)
-  const isLedgerWallet = wallet?.adapter?.name?.toLowerCase().includes('ledger') || false;
 
   // Track previous publicKey to detect wallet changes
   const prevPublicKeyRef = React.useRef<string | null>(null);
   const prevConnectedRef = React.useRef<boolean>(false);
 
-  // Reset verification state when wallet disconnects or changes
+  // Automatically check NFTs when wallet connects
   React.useEffect(() => {
     const currentPublicKey = publicKey?.toString() || null;
     const wasConnected = prevConnectedRef.current;
@@ -66,235 +62,99 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
       });
     } 
     // If wallet changed (different publicKey while still connected)
-    else if (connected && publicKey && wasPublicKey && wasPublicKey !== currentPublicKey) {
-      console.log('🔄 Solana wallet changed, resetting verification state');
+    else if (connected && publicKey && wasPublicKey && wasPublicKey !== currentPublicKey && currentPublicKey) {
+      console.log('🔄 Solana wallet changed, checking NFTs for new wallet');
       setIsVerified(false);
       setNftCount(null);
       prevPublicKeyRef.current = currentPublicKey;
       prevConnectedRef.current = true;
-      // Clear parent state when wallet changes
-      onVerified({
-        solAddress: '',
-        tokenIds: [],
-        signature: '',
-        nfts: [],
-        verificationNonce: '',
-        verificationMessage: ''
-      });
+      // Automatically check NFTs for the new wallet
+      checkNFTs(currentPublicKey);
     }
-    // If wallet connected for the first time or reconnected with same key
-    else if (connected && publicKey) {
-      if (!wasPublicKey) {
-        prevPublicKeyRef.current = currentPublicKey;
-      }
+    // If wallet connected for the first time
+    else if (connected && publicKey && !wasPublicKey && currentPublicKey) {
+      console.log('🔄 Solana wallet connected, automatically checking NFTs');
+      prevPublicKeyRef.current = currentPublicKey;
       prevConnectedRef.current = true;
+      // Automatically check NFTs when wallet connects
+      checkNFTs(currentPublicKey);
     }
     // Update connected state
-    else {
+    else if (connected && publicKey) {
+      prevConnectedRef.current = true;
+    } else {
       prevConnectedRef.current = false;
     }
   }, [connected, publicKey, onVerified]);
 
-  const handleVerify = async () => {
-    if (!publicKey) {
-      toast({
-        title: "Wallet not connected",
-        description: "Please connect your Solana wallet first",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  // Function to check NFTs automatically (no signature required)
+  const checkNFTs = async (solAddress: string) => {
     setIsVerifying(true);
-
+    
     try {
-      const solAddress = publicKey.toString();
-
-      // For Ledger wallets, skip signature verification and just check NFTs
-      if (isLedgerWallet) {
-        console.log("🔐 Ledger wallet detected - skipping signature verification");
-        
-        // Directly verify NFTs without signature
-        const verifyResponse = await fetch("/api/verify-solana", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            solAddress,
-            skipSignature: true, // Flag to skip signature verification for Ledger
-          }),
-        });
-
-        const verifyData = await verifyResponse.json();
-
-        if (!verifyResponse.ok) {
-          const errorMsg = verifyData.error || "Verification failed";
-          throw new Error(errorMsg);
-        }
-
-        if (verifyData.verified) {
-          setIsVerified(true);
-          setNftCount(verifyData.tokenIds.length);
-          
-          const nftsArray = verifyData.nfts || [];
-          
-          const dataToPass = {
-            solAddress,
-            tokenIds: verifyData.tokenIds,
-            signature: '', // Empty signature for Ledger (not required)
-            nfts: nftsArray,
-            verificationNonce: '', // Empty nonce for Ledger
-            verificationMessage: '', // Empty message for Ledger
-          };
-          
-          toast({
-            title: "Solana wallet verified!",
-            description: `Found ${verifyData.tokenIds.length} Wassieverse NFT(s)`,
-          });
-
-          onVerified(dataToPass);
-        }
-        return;
-      }
-
-      // For non-Ledger wallets, use the normal signature verification flow
-      if (!signMessage) {
-        toast({
-          title: "Wallet not supported",
-          description: "This wallet does not support message signing",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Step 1: Get nonce
-      const nonceResponse = await fetch("/api/nonce", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address: solAddress }),
-      });
-
-      if (!nonceResponse.ok) {
-        throw new Error("Failed to get nonce");
-      }
-
-      const { nonce } = await nonceResponse.json();
-
-      // Step 2: Create message and sign it
-      const timestamp = Date.now();
-      const message = `Link EVM address | nonce: ${nonce} | timestamp: ${timestamp}`;
-      const messageBytes = new TextEncoder().encode(message);
-
-      let signature: Uint8Array;
-      try {
-        signature = await signMessage(messageBytes);
-        
-        // Validate signature format (should be 64 bytes for Ed25519)
-        if (!signature || signature.length !== 64) {
-          throw new Error("Invalid signature format received from wallet");
-        }
-      } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        
-        // Check if it's a user cancellation
-        if (errorMessage.includes("User rejected") || 
-            errorMessage.includes("denied") ||
-            errorMessage.includes("cancelled")) {
-          toast({
-            title: "Signature cancelled",
-            description: "You need to sign the message to verify ownership",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Signature Error",
-            description: errorMessage || "Failed to sign message",
-            variant: "destructive",
-          });
-        }
-        setIsVerifying(false);
-        return;
-      }
-
-      const signatureBase58 = bs58.encode(signature);
-
-      // Step 3: Verify Solana signature and check NFTs
-      const verifyResponse = await fetch("/api/verify-solana", {
+      const checkResponse = await fetch("/api/check-nfts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           solAddress,
-          signature: signatureBase58,
-          message,
-          messageBytes: Array.from(messageBytes),
-          nonce,
-          skipSignature: false,
         }),
       });
 
-      const verifyData = await verifyResponse.json();
+      const checkData = await checkResponse.json();
 
-      if (!verifyResponse.ok) {
-        const errorMsg = verifyData.error || "Verification failed";
-        // Provide helpful guidance for Ledger users
-        if (errorMsg.includes("Invalid signature") || errorMsg.includes("verification failed")) {
-          throw new Error(`${errorMsg}. If using Ledger, ensure 'Blind Signing' is enabled in the Solana app settings.`);
+      if (!checkResponse.ok) {
+        const errorMsg = checkData.error || "Failed to check NFTs";
+        // Don't show error toast if no NFTs found - that's normal
+        if (errorMsg.includes("No Wassieverse NFTs")) {
+          setIsVerified(false);
+          setNftCount(0);
+          onVerified({
+            solAddress,
+            tokenIds: [],
+            signature: '',
+            nfts: [],
+            verificationNonce: '',
+            verificationMessage: ''
+          });
+          return;
         }
         throw new Error(errorMsg);
       }
 
-      if (verifyData.verified) {
+      if (checkData.success) {
         setIsVerified(true);
-        setNftCount(verifyData.tokenIds.length);
+        setNftCount(checkData.tokenIds.length);
         
-        // Ensure nfts array is present
-        const nftsArray = verifyData.nfts || [];
-        
-        console.log('✅ SolanaWalletConnector: Verification response from API:', {
-          verified: verifyData.verified,
-          tokenIds: verifyData.tokenIds,
-          tokenIdsLength: verifyData.tokenIds?.length,
-          nfts: verifyData.nfts,
-          nftsLength: verifyData.nfts?.length,
-          nftsArray: nftsArray,
-          nftsArrayLength: nftsArray.length,
-          fullResponse: JSON.stringify(verifyData)
-        });
+        const nftsArray = checkData.nfts || [];
         
         const dataToPass = {
           solAddress,
-          tokenIds: verifyData.tokenIds,
-          signature: signatureBase58,
+          tokenIds: checkData.tokenIds,
+          signature: '', // No signature needed for display
           nfts: nftsArray,
-          verificationNonce: nonce,
-          verificationMessage: message,
+          verificationNonce: '', // No nonce needed for display
+          verificationMessage: '', // No message needed for display
         };
         
-        console.log('📤 SolanaWalletConnector: Calling onVerified with:', dataToPass);
-        console.log('📦 Final NFT data being passed:', {
-          nfts: dataToPass.nfts,
-          nftsLength: dataToPass.nfts.length,
-          nftsString: JSON.stringify(dataToPass.nfts)
-        });
-        
-        toast({
-          title: "Solana wallet verified!",
-          description: `Found ${verifyData.tokenIds.length} Wassieverse NFT(s)`,
-        });
+        if (checkData.tokenIds.length > 0) {
+          toast({
+            title: "NFTs found!",
+            description: `Found ${checkData.tokenIds.length} Wassieverse NFT(s) in this wallet`,
+          });
+        }
 
         onVerified(dataToPass);
       }
     } catch (err: unknown) {
-      console.error("Verification error:", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to verify Solana wallet";
-      toast({
-        title: "Verification failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      console.error("NFT check error:", err);
+      // Don't show error toast for automatic checks - just log it
+      setIsVerified(false);
+      setNftCount(null);
     } finally {
       setIsVerifying(false);
     }
   };
+
 
   const disabled = !evmAddress;
 
@@ -308,7 +168,7 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
             <CardDescription className="text-[#A0A0A0]">
               {disabled
                 ? "Complete Step 1 first - connect your EVM wallet"
-                : "Connect your Solana wallet (Phantom, Ledger, etc.) to verify Wassieverse NFT ownership"}
+                : "Connect your Solana wallet (Phantom, Ledger, etc.) to view your Wassieverse NFTs"}
             </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -318,21 +178,11 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
             disabled={disabled}
           />
           
-          {connected && !isVerified && (
-            <Button
-              onClick={handleVerify}
-              disabled={isVerifying || disabled}
-              className="w-full"
-            >
-              {isVerifying ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Verifying...
-                </>
-              ) : (
-                "Verify NFT Ownership"
-              )}
-            </Button>
+          {connected && isVerifying && (
+            <div className="flex items-center justify-center gap-2 text-sm text-[#A0A0A0]">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Checking for NFTs...
+            </div>
           )}
 
           {connected && (
@@ -352,10 +202,18 @@ export function SolanaWalletConnector({ evmAddress, onVerified }: SolanaWalletCo
             </Button>
           )}
 
-          {isVerified && nftCount !== null && (
+          {isVerified && nftCount !== null && nftCount > 0 && (
             <div className="bg-[#1a3a1a] border border-[#34C759]/30 rounded-xl p-4 inner-glow">
               <p className="text-sm text-[#34C759] font-semibold">
-                ✓ Verified! Found {nftCount} Wassieverse NFT{nftCount !== 1 ? "s" : ""} in this wallet
+                ✓ Found {nftCount} Wassieverse NFT{nftCount !== 1 ? "s" : ""} in this wallet
+              </p>
+            </div>
+          )}
+          
+          {isVerified && nftCount === 0 && (
+            <div className="bg-[#2a1a3a] border border-[#B066FF]/30 rounded-xl p-4">
+              <p className="text-sm text-[#A0A0A0]">
+                No Wassieverse NFTs found in this wallet
               </p>
             </div>
           )}
