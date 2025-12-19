@@ -3,8 +3,8 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    // Query LinkedNFT table for entries after 2025-11-26
-    const cutoffDate = new Date("2025-11-26T00:00:00.000Z");
+    // Query LinkedNFT table for entries after 2025-12-09
+    const cutoffDate = new Date("2025-12-09T00:00:00.000Z");
     
     const rows = await prisma.linkedNFT.findMany({
       where: {
