@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import React from "react";
@@ -197,7 +197,7 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-b from-[#0a0a0f] via-[#121212] to-[#1a0a1f] dark">
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto space-y-8">
-          {/* Header */}
+          {/* Header - Logo */}
           <div className="text-center space-y-4">
             <div className="flex justify-center">
               <Image
@@ -209,52 +209,17 @@ export default function Home() {
                 priority
               />
             </div>
-            <p className="text-lg text-[#A0A0A0] max-w-2xl mx-auto">
-              Connect your EVM wallet to create your profile, then link Wassieverse NFTs from your Solana wallets.
-            </p>
           </div>
 
-          {/* Main Content */}
-          <div className="grid gap-6">
-            {/* Step 1: EVM Wallet Connection */}
-            <EVMWalletConnector 
-              onConnected={handleEVMConnected}
-              onDisconnected={handleEVMDisconnected}
-            />
-
-            {/* Step 2: Solana Wallet Connection - Always show, grayed out until EVM connected */}
-            <SolanaWalletConnector
-              evmAddress={evmAddress || null}
-              onVerified={handleSolanaVerified}
-            />
-
-            {/* NFT Selection - Always show, grayed out until EVM connected */}
-            <NFTSelection
-              key={`nft-selection-${solanaData?.solAddress || 'no-solana'}-${evmAddress || 'no-evm'}`}
-              solanaAddress={solanaData?.solAddress ?? null}
-              evmAddress={evmAddress ?? null}
-              verifiedNFTs={solanaData?.nfts ?? []}
-              onSelectionChange={setSelectedTokenIds}
-              onLinkNFTs={handleLinkNFTs}
-              isLinking={isLinking}
-            />
+          {/* Information Message */}
+          <div className="text-center">
+            <p className="text-lg text-[#A0A0A0] max-w-2xl mx-auto font-semibold">
+              NFT TO EVM WALLET LINKER IS CLOSED, YOU CAN STILL CHECK IF YOUR LINKED YOUR NFTS BELOW
+            </p>
           </div>
 
           {/* NFT Link Status */}
           <NFTLinkStatus />
-
-          {/* Footer Info */}
-          <div className="bg-[#202020] rounded-xl p-6 text-sm text-[#A0A0A0] space-y-2 card-depth border border-[#2a2a2a]">
-            <h3 className="font-semibold text-white">How it works:</h3>
-            <ol className="list-decimal list-inside space-y-1">
-              <li>Connect your EVM wallet (MetaMask, WalletConnect, etc.) - this becomes your profile</li>
-              <li>Connect your Solana wallet (Phantom, etc.) and verify NFT ownership</li>
-              <li>Select and link your Wassieverse NFTs to your EVM profile</li>
-              <li>Add more Solana wallets to link additional NFTs to the same EVM profile</li>
-              <li>All your NFTs from different Solana wallets are aggregated in one place</li>
-              <li>Check if a specific Wassieverse NFT Token ID is already linked before buying on secondary</li>
-            </ol>
-          </div>
         </div>
       </div>
     </div>
