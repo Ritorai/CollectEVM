@@ -24,18 +24,7 @@ export async function GET(req: NextRequest) {
         evmAddress: evmAddress.toLowerCase(),
       },
       include: {
-        linkedNFTs: {
-          select: {
-            id: true,
-            tokenId: true,
-            mintAddress: true,
-            solanaAddress: true,
-            linkedAt: true,
-          },
-          orderBy: {
-            linkedAt: "desc",
-          },
-        },
+        linkedNFTs: true,
       },
       orderBy: {
         verifiedAt: "desc",
@@ -43,7 +32,7 @@ export async function GET(req: NextRequest) {
     });
 
     // Aggregate all NFTs from all Solana wallets
-    const allNFTs = walletLinks.flatMap((link: { solanaAddress: string; verifiedAt: Date; linkedNFTs: Array<{ id: string; tokenId: string; mintAddress: string; solanaAddress: string; linkedAt: Date }> }) =>
+    const allNFTs = walletLinks.flatMap((link) =>
       link.linkedNFTs.map((nft) => ({
         ...nft,
         solanaAddress: link.solanaAddress,
@@ -52,7 +41,7 @@ export async function GET(req: NextRequest) {
     );
 
     // Group by Solana wallet for display
-    const solanaWallets = walletLinks.map((link: { solanaAddress: string; verifiedAt: Date; updatedAt: Date; linkedNFTs: Array<unknown> }) => ({
+    const solanaWallets = walletLinks.map((link) => ({
       solanaAddress: link.solanaAddress,
       nftCount: link.linkedNFTs.length,
       verifiedAt: link.verifiedAt,
@@ -68,7 +57,7 @@ export async function GET(req: NextRequest) {
         solanaWallets,
         nfts: allNFTs,
         // Group NFTs by Solana wallet for easier display
-        nftsByWallet: walletLinks.map((link: { solanaAddress: string; verifiedAt: Date; linkedNFTs: Array<unknown> }) => ({
+        nftsByWallet: walletLinks.map((link) => ({
           solanaAddress: link.solanaAddress,
           nfts: link.linkedNFTs,
           verifiedAt: link.verifiedAt,
